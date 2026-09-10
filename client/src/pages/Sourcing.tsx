@@ -21,7 +21,7 @@ const NICHE_LABEL: Record<string, string> = {
 
 export function Sourcing() {
   const navigate = useNavigate();
-  const [query, setQuery] = useState("perfumes árabes");
+  const [query, setQuery] = useState("perfumes");
   const [desiredResalePrice, setDesiredResalePrice] = useState("");
   const [result, setResult] = useState<SourcingResearchResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,13 +58,13 @@ export function Sourcing() {
   }, []);
 
   function handleUseOption(option: SourcingOption) {
-    const avgCostBrl = (option.unitCostBrlMin + option.unitCostBrlMax) / 2;
+    const avgLandedCostBrl = (option.landedCostBrlMin + option.landedCostBrlMax) / 2;
     navigate("/products", {
       state: {
         prefill: {
           name: option.productExamples[0] ? `${option.name} — ${option.productExamples[0]}` : option.name,
           category: "perfumes",
-          costBasis: Math.round(avgCostBrl * 100) / 100,
+          costBasis: Math.round(avgLandedCostBrl * 100) / 100,
           keywords: [...option.productExamples, "perfume", "importado"],
           description: `Fornecedor: ${option.name} (${option.channel}, ${option.country}). ${option.riskNotes}`,
         },
@@ -146,19 +146,30 @@ export function Sourcing() {
           <section className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
             <p className="text-xs text-indigo-600 mb-1">
               Análise gerada por IA · modelo: <span className="font-mono">{result.aiProvider}</span> · cotação usada:
-              US$ 1 = {formatBRL(result.usdToBrlRate)}
+              US$ 1 = {formatBRL(result.usdToBrlRate)} · impostos de importação (referência): {result.importTaxPercent}%
             </p>
             <p className="text-sm text-indigo-900">{result.summary}</p>
+            <p className="text-xs text-indigo-500 mt-1">
+              Ordenado automaticamente pelo menor custo total de importação (produto + frete + impostos de
+              referência). Ajuste a cotação e os impostos em Configurações.
+            </p>
           </section>
 
           <section className="grid gap-4">
-            {result.options.map((option) => (
+            {result.options.map((option, idx) => (
               <div key={option.leadId} className="bg-white rounded-lg border border-slate-200 p-5">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div>
-                    <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                      {NICHE_LABEL[option.niche] ?? option.niche}
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {idx === 0 && (
+                        <span className="text-xs bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                          Menor custo total
+                        </span>
+                      )}
+                      <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                        {NICHE_LABEL[option.niche] ?? option.niche}
+                      </span>
+                    </div>
                     <h3 className="font-medium text-slate-900 mt-1">{option.name}</h3>
                     <p className="text-xs text-slate-500">
                       {option.channel} · {option.country}
@@ -176,14 +187,21 @@ export function Sourcing() {
 
                 <div className="mt-3 bg-slate-50 border border-slate-200 rounded-md p-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-600">
                   <span>
-                    Custo de referência: US$ {option.unitCostUsdMin}–{option.unitCostUsdMax} (
-                    {formatBRL(option.unitCostBrlMin)}–{formatBRL(option.unitCostBrlMax)})
+                    Produto: US$ {option.unitCostUsdMin}–{option.unitCostUsdMax} ({formatBRL(option.unitCostBrlMin)}–
+                    {formatBRL(option.unitCostBrlMax)})
+                  </span>
+                  <span>
+                    Frete (ref.): US$ {option.freightUsdPerUnit}/un. ({formatBRL(option.freightBrlPerUnit)})
+                  </span>
+                  <span className="font-medium text-slate-800">
+                    Custo total de importação: {formatBRL(option.landedCostBrlMin)}–{formatBRL(option.landedCostBrlMax)}{" "}
+                    /un.
                   </span>
                   <span>Pedido mínimo: {option.moq} un.</span>
                   <span>Prazo estimado: {option.leadTimeDays} dias</span>
                   {option.estimatedMarginPercent !== null && (
                     <span className="font-medium text-slate-800">
-                      Margem estimada: {option.estimatedMarginPercent.toFixed(0)}%
+                      Margem estimada (sobre custo total): {option.estimatedMarginPercent.toFixed(0)}%
                     </span>
                   )}
                 </div>

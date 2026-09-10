@@ -24,7 +24,9 @@ export function Marketplaces() {
             <p className="text-sm text-slate-500 mt-1">{m.notes}</p>
             <dl className="grid grid-cols-2 gap-2 mt-3 text-xs text-slate-600">
               <dt className="text-slate-400">Taxa</dt>
-              <dd>{m.feePercent}%</dd>
+              <dd>
+                {m.feePercent}%{m.fixedFeeBrl ? ` + R$ ${m.fixedFeeBrl.toFixed(2)} fixos/item` : ""}
+              </dd>
               <dt className="text-slate-400">Título máx.</dt>
               <dd>{m.titleMaxLength} caracteres</dd>
               <dt className="text-slate-400">Descrição máx.</dt>

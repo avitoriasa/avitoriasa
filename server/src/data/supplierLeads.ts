@@ -2,10 +2,11 @@ import { SupplierLead } from "../types.js";
 
 /**
  * Curated reference list of sourcing channels for perfume resale — NOT live
- * or scraped data. Costs are typical reference ranges for informational
- * planning only; always confirm current price, MOQ, freight and payment
- * terms directly with the supplier before buying, and validate authenticity
- * / distribution rights before importing "perfumes importados originais".
+ * or scraped data. Costs (including freightUsdPerUnit) are typical reference
+ * ranges for informational planning only; always confirm current price, MOQ,
+ * freight and payment terms directly with the supplier before buying, and
+ * validate authenticity / distribution rights before importing "perfumes
+ * importados originais".
  *
  * To extend: add entries here, or replace this module with a real call to
  * a B2B sourcing API / your own supplier database — sourcingService.ts only
@@ -20,6 +21,7 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     country: "Emirados Árabes Unidos",
     unitCostUsdMin: 4,
     unitCostUsdMax: 12,
+    freightUsdPerUnit: 2.5,
     moq: 100,
     leadTimeDays: 30,
     riskNotes:
@@ -34,6 +36,7 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     country: "Emirados Árabes Unidos",
     unitCostUsdMin: 5,
     unitCostUsdMax: 10,
+    freightUsdPerUnit: 2.5,
     moq: 50,
     leadTimeDays: 28,
     riskNotes: "Marca própria — baixo risco de autenticidade. Confirme incoterm (FOB/CIF) antes de fechar pedido.",
@@ -47,6 +50,7 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     country: "Emirados Árabes Unidos / Omã",
     unitCostUsdMin: 5,
     unitCostUsdMax: 14,
+    freightUsdPerUnit: 2.5,
     moq: 50,
     leadTimeDays: 30,
     riskNotes: "Marca com décadas no mercado — baixo risco. Linhas de oud puro têm custo bem mais alto que eau de parfum.",
@@ -60,6 +64,7 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     country: "Emirados Árabes Unidos",
     unitCostUsdMin: 6,
     unitCostUsdMax: 15,
+    freightUsdPerUnit: 2.5,
     moq: 50,
     leadTimeDays: 30,
     riskNotes: "Uma das marcas árabes mais tradicionais — baixo risco de autenticidade.",
@@ -73,6 +78,7 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     country: "Emirados Árabes Unidos / Índia",
     unitCostUsdMin: 8,
     unitCostUsdMax: 20,
+    freightUsdPerUnit: 2.5,
     moq: 50,
     leadTimeDays: 30,
     riskNotes: "Marca premium do segmento — ticket de entrada mais alto, margem por unidade também maior.",
@@ -86,6 +92,7 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     country: "Emirados Árabes Unidos",
     unitCostUsdMin: 5,
     unitCostUsdMax: 12,
+    freightUsdPerUnit: 2.5,
     moq: 100,
     leadTimeDays: 25,
     riskNotes: "Marca própria — baixo risco. Boa relação custo x reconhecimento de marca no Brasil.",
@@ -99,6 +106,7 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     country: "Emirados Árabes Unidos",
     unitCostUsdMin: 4,
     unitCostUsdMax: 10,
+    freightUsdPerUnit: 2.5,
     moq: 100,
     leadTimeDays: 20,
     riskNotes:
@@ -113,6 +121,7 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     country: "Emirados Árabes Unidos",
     unitCostUsdMin: 3,
     unitCostUsdMax: 8,
+    freightUsdPerUnit: 2.5,
     moq: 100,
     leadTimeDays: 25,
     riskNotes: "Ticket de entrada baixo, bom para testar giro rápido antes de subir para linhas premium.",
@@ -126,6 +135,7 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     country: "Emirados Árabes Unidos",
     unitCostUsdMin: 4,
     unitCostUsdMax: 9,
+    freightUsdPerUnit: 2.5,
     moq: 100,
     leadTimeDays: 25,
     riskNotes: "Catálogo grande de réplicas olfativas de grifes — confira sempre a concentração (EDP x EDT) anunciada.",
@@ -139,6 +149,7 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     country: "União Europeia (variável)",
     unitCostUsdMin: 25,
     unitCostUsdMax: 45,
+    freightUsdPerUnit: 4,
     moq: 24,
     leadTimeDays: 15,
     riskNotes:
@@ -153,6 +164,7 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     country: "Estados Unidos",
     unitCostUsdMin: 20,
     unitCostUsdMax: 40,
+    freightUsdPerUnit: 5,
     moq: 12,
     leadTimeDays: 12,
     riskNotes:
@@ -167,6 +179,7 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     country: "Variável (majoritariamente China/Emirados Árabes Unidos)",
     unitCostUsdMin: 3,
     unitCostUsdMax: 30,
+    freightUsdPerUnit: 2,
     moq: 50,
     leadTimeDays: 25,
     riskNotes: "Use Trade Assurance e peça amostra antes de comprar em volume; filtre por 'Verified Supplier'.",
@@ -180,6 +193,7 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     country: "Variável (forte em Emirados Árabes Unidos)",
     unitCostUsdMin: 3,
     unitCostUsdMax: 25,
+    freightUsdPerUnit: 2.5,
     moq: 50,
     leadTimeDays: 28,
     riskNotes: "Menos garantias de transação que o Alibaba — priorize fornecedores com anos de cadastro e referências.",

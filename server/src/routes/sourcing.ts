@@ -21,6 +21,7 @@ sourcingRouter.post("/research", async (req, res) => {
     const result = await researchSuppliers(
       query,
       store.settings.usdToBrlRate,
+      store.settings.importTaxPercent,
       desiredResalePrice !== undefined ? Number(desiredResalePrice) : undefined,
       aiProvider
     );

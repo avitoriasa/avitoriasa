@@ -116,19 +116,36 @@ export function Settings() {
           trocando título, descrição e palavras-chave para evitar estagnação no ranking do marketplace.
         </p>
 
-        <label className="flex flex-col gap-1 text-sm text-slate-700">
-          <span>Cotação USD → BRL (para custos de fornecedores)</span>
-          <input
-            type="number"
-            step="0.01"
-            className="input max-w-[160px]"
-            value={settings.usdToBrlRate}
-            onChange={(e) => setSettings({ ...settings, usdToBrlRate: Number(e.target.value) })}
-          />
-          <span className="text-xs text-slate-400">
-            Não é uma cotação ao vivo — atualize manualmente conforme o câmbio do dia na tela de Fornecedores.
-          </span>
-        </label>
+        <div className="grid grid-cols-2 gap-4">
+          <label className="flex flex-col gap-1 text-sm text-slate-700">
+            <span>Cotação USD → BRL (custos de fornecedores)</span>
+            <input
+              type="number"
+              step="0.01"
+              className="input"
+              value={settings.usdToBrlRate}
+              onChange={(e) => setSettings({ ...settings, usdToBrlRate: Number(e.target.value) })}
+            />
+            <span className="text-xs text-slate-400">Não é uma cotação ao vivo — atualize conforme o câmbio do dia.</span>
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-slate-700">
+            <span>Impostos de importação (% de referência)</span>
+            <input
+              type="number"
+              step="1"
+              className="input"
+              value={settings.importTaxPercent}
+              onChange={(e) => setSettings({ ...settings, importTaxPercent: Number(e.target.value) })}
+            />
+            <span className="text-xs text-slate-400">
+              Estimativa de II+IPI+PIS/COFINS+ICMS sobre custo+frete — confirme com um despachante/contador.
+            </span>
+          </label>
+        </div>
+        <p className="text-xs text-slate-500">
+          Essas duas cotações definem o custo total de importação (produto + frete + impostos) usado para ranquear
+          automaticamente os fornecedores na tela de Fornecedores, priorizando sempre o menor custo total.
+        </p>
 
         {message && <p className="text-sm text-indigo-700">{message}</p>}
 

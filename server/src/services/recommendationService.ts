@@ -52,7 +52,7 @@ export async function generateRecommendation(productId: string, aiProvider: AIPr
         categoryFit: breakdown.categoryFit,
         netMarginEstimate: breakdown.netMarginEstimate,
       },
-      pricing: computePricing(product.basePrice, marketplace.feePercent),
+      pricing: computePricing(product.basePrice, marketplace),
     };
     return entry;
   });

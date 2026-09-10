@@ -22,6 +22,8 @@ export interface Marketplace {
   slug: string;
   name: string;
   feePercent: number;
+  /** Flat per-item fee some marketplaces charge on top of the percentage (e.g. TikTok Shop above R$50). Defaults to 0. */
+  fixedFeeBrl?: number;
   titleMaxLength: number;
   descriptionMaxLength: number;
   maxKeywords: number;
@@ -39,6 +41,7 @@ export type ConnectionStatus = "disconnected" | "connected" | "pending";
 export interface PricingBreakdown {
   basePrice: number;
   feePercent: number;
+  fixedFeeBrl: number;
   feeAmount: number;
   listingPrice: number;
 }
@@ -150,6 +153,13 @@ export interface AppSettings {
    * Não é uma cotação ao vivo — atualize manualmente em Configurações.
    */
   usdToBrlRate: number;
+  /**
+   * Estimativa grosseira da carga tributária combinada de importação comercial
+   * (II + IPI + PIS/COFINS monofásico + ICMS, aplicada sobre custo + frete).
+   * Varia por NCM, estado e regime tributário — não é um valor oficial;
+   * confirme com um despachante aduaneiro/contador antes de importar.
+   */
+  importTaxPercent: number;
 }
 
 export type SupplierNiche = "perfumes_arabes" | "perfumes_importados_originais" | "geral_b2b";
@@ -168,13 +178,15 @@ export interface SupplierLead {
   country: string;
   unitCostUsdMin: number;
   unitCostUsdMax: number;
+  /** Reference air-freight/courier cost per unit at this lead's typical MOQ — NOT a live quote. */
+  freightUsdPerUnit: number;
   moq: number;
   leadTimeDays: number;
   riskNotes: string;
   productExamples: string[];
 }
 
-/** A SupplierLead enriched with BRL conversion, margin estimate and AI reasoning. */
+/** A SupplierLead enriched with BRL conversion, landed cost, margin estimate and AI reasoning. */
 export interface SourcingOption {
   leadId: string;
   name: string;
@@ -185,6 +197,11 @@ export interface SourcingOption {
   unitCostUsdMax: number;
   unitCostBrlMin: number;
   unitCostBrlMax: number;
+  freightUsdPerUnit: number;
+  freightBrlPerUnit: number;
+  /** unitCost + freight, marked up by the reference import tax rate — the "menor custo" ranking key. */
+  landedCostBrlMin: number;
+  landedCostBrlMax: number;
   moq: number;
   leadTimeDays: number;
   riskNotes: string;
@@ -196,6 +213,7 @@ export interface SourcingOption {
 export interface SourcingResearchResult {
   query: string;
   usdToBrlRate: number;
+  importTaxPercent: number;
   summary: string;
   aiProvider: string;
   options: SourcingOption[];

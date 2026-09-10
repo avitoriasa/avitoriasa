@@ -49,6 +49,7 @@ function matchesQuery(lead: SupplierLead, normalizedQuery: string): boolean {
 export async function researchSuppliers(
   query: string,
   usdToBrlRate: number,
+  importTaxPercent: number,
   desiredResalePrice: number | undefined,
   aiProvider: AIProvider
 ): Promise<SourcingResearchResult> {
@@ -59,10 +60,17 @@ export async function researchSuppliers(
   const optionsWithoutReasoning: Omit<SourcingOption, "reasoning">[] = leads.map((lead) => {
     const unitCostBrlMin = round2(lead.unitCostUsdMin * usdToBrlRate);
     const unitCostBrlMax = round2(lead.unitCostUsdMax * usdToBrlRate);
-    const avgCostBrl = (unitCostBrlMin + unitCostBrlMax) / 2;
+    const freightBrlPerUnit = round2(lead.freightUsdPerUnit * usdToBrlRate);
+    const taxMultiplier = 1 + importTaxPercent / 100;
+    // "Landed cost" = unit cost + freight, marked up by the reference import
+    // tax rate — this is the automatic "lowest total cost" ranking key the
+    // user asked for (not just the sticker price abroad).
+    const landedCostBrlMin = round2((unitCostBrlMin + freightBrlPerUnit) * taxMultiplier);
+    const landedCostBrlMax = round2((unitCostBrlMax + freightBrlPerUnit) * taxMultiplier);
+    const avgLandedCostBrl = (landedCostBrlMin + landedCostBrlMax) / 2;
     const estimatedMarginPercent =
       desiredResalePrice && desiredResalePrice > 0
-        ? round2(((desiredResalePrice - avgCostBrl) / desiredResalePrice) * 100)
+        ? round2(((desiredResalePrice - avgLandedCostBrl) / desiredResalePrice) * 100)
         : null;
 
     return {
@@ -75,6 +83,10 @@ export async function researchSuppliers(
       unitCostUsdMax: lead.unitCostUsdMax,
       unitCostBrlMin,
       unitCostBrlMax,
+      freightUsdPerUnit: lead.freightUsdPerUnit,
+      freightBrlPerUnit,
+      landedCostBrlMin,
+      landedCostBrlMax,
       moq: lead.moq,
       leadTimeDays: lead.leadTimeDays,
       riskNotes: lead.riskNotes,
@@ -83,13 +95,9 @@ export async function researchSuppliers(
     };
   });
 
-  // Best margin (or lowest cost, when no target resale price was given) first.
-  optionsWithoutReasoning.sort((a, b) => {
-    if (a.estimatedMarginPercent !== null && b.estimatedMarginPercent !== null) {
-      return b.estimatedMarginPercent - a.estimatedMarginPercent;
-    }
-    return a.unitCostBrlMin - b.unitCostBrlMin;
-  });
+  // Automatic ranking: lowest total landed cost (unit cost + freight + import
+  // taxes) first — not just the cheapest sticker price abroad.
+  optionsWithoutReasoning.sort((a, b) => a.landedCostBrlMin - b.landedCostBrlMin);
 
   const { summary, reasoningByLeadId } = await aiProvider.researchSuppliers({
     query,
@@ -101,7 +109,7 @@ export async function researchSuppliers(
     reasoning: reasoningByLeadId[option.leadId] ?? "",
   }));
 
-  return { query, usdToBrlRate, summary, aiProvider: aiProvider.name, options };
+  return { query, usdToBrlRate, importTaxPercent, summary, aiProvider: aiProvider.name, options };
 }
 
 export function listFxMethods(): FxMethod[] {

@@ -158,7 +158,7 @@ productsRouter.post("/:id/connections", async (req, res) => {
     currentTitle: product.name,
     currentDescription: product.description,
     currentKeywords: product.keywords,
-    pricing: computePricing(product.basePrice, marketplace.feePercent),
+    pricing: computePricing(product.basePrice, marketplace),
     rankScore: 50,
     lastOptimizedAt: null,
     createdAt: new Date().toISOString(),

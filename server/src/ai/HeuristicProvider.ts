@@ -113,9 +113,11 @@ export class HeuristicProvider implements AIProvider {
 
   async researchSuppliers(input: ResearchSuppliersInput): Promise<ResearchSuppliersOutput> {
     const reasoningByLeadId: Record<string, string> = {};
+    const cheapest = input.options[0];
     for (const option of input.options) {
       const parts: string[] = [];
-      parts.push(`custo de referência entre US$ ${option.unitCostUsdMin} e US$ ${option.unitCostUsdMax} por unidade`);
+      parts.push(`custo de importação (produto + frete + impostos de referência) entre R$ ${option.landedCostBrlMin.toFixed(2)} e R$ ${option.landedCostBrlMax.toFixed(2)} por unidade`);
+      parts.push(`sendo US$ ${option.unitCostUsdMin}-${option.unitCostUsdMax} de produto e ~US$ ${option.freightUsdPerUnit} de frete por unidade`);
       parts.push(`pedido mínimo de ${option.moq} unidades`);
       parts.push(`prazo de entrega estimado em ${option.leadTimeDays} dias`);
       if (option.estimatedMarginPercent !== null) {
@@ -127,13 +129,14 @@ export class HeuristicProvider implements AIProvider {
               : `margem estimada apertada (~${option.estimatedMarginPercent.toFixed(0)}%) — considere um preço de venda maior`
         );
       }
+      if (option.leadId === cheapest.leadId) parts.push("menor custo total de importação entre as opções encontradas");
       reasoningByLeadId[option.leadId] = `${option.name}: ${parts.join(", ")}.`;
     }
 
     const hasOriginalImports = input.options.some((o) => o.niche === "perfumes_importados_originais");
     const summary = hasOriginalImports
-      ? `Para "${input.query}": os canais de marca própria árabe (Lattafa, Ard Al Zaafaran, Rasasi e similares) têm menor risco e ticket de entrada mais baixo. Os canais de grife original (importação paralela) têm custo unitário maior e risco de autenticidade — exija nota fiscal rastreável e desconfie de preço muito abaixo do praticado por distribuidores oficiais.`
-      : `Para "${input.query}": priorize fornecedores de marca própria (menor risco de autenticidade) e negocie o MOQ mínimo para validar o giro antes de comprar em volume maior.`;
+      ? `Para "${input.query}": ranqueado automaticamente pelo menor custo total de importação (produto + frete + impostos de referência) — hoje "${cheapest?.name}". Canais de marca própria árabe (Lattafa, Ard Al Zaafaran, Rasasi e similares) têm menor risco e ticket de entrada mais baixo. Canais de grife original (importação paralela) têm custo total maior e risco de autenticidade — exija nota fiscal rastreável e desconfie de preço muito abaixo do praticado por distribuidores oficiais.`
+      : `Para "${input.query}": ranqueado automaticamente pelo menor custo total de importação (produto + frete + impostos de referência) — hoje "${cheapest?.name}". Priorize fornecedores de marca própria (menor risco de autenticidade) e negocie o MOQ mínimo para validar o giro antes de comprar em volume maior.`;
 
     return { summary, reasoningByLeadId };
   }

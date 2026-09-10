@@ -15,11 +15,13 @@ import { MarketSignal } from "../types.js";
  */
 
 const CATEGORY_AFFINITY: Record<string, Record<string, number>> = {
-  "mercado-livre": { eletronicos: 90, casa: 80, moda: 60, esporte: 75, beleza: 55, brinquedos: 70 },
-  shopee: { moda: 90, beleza: 85, brinquedos: 80, eletronicos: 60, casa: 60, esporte: 65 },
-  "amazon-br": { eletronicos: 92, casa: 78, moda: 50, esporte: 70, beleza: 60, brinquedos: 65 },
-  magalu: { casa: 90, eletronicos: 82, moda: 55, esporte: 60, beleza: 55, brinquedos: 60 },
-  shein: { moda: 95, beleza: 88, brinquedos: 55, eletronicos: 30, casa: 40, esporte: 50 },
+  "mercado-livre": { eletronicos: 90, casa: 80, moda: 60, esporte: 75, beleza: 55, brinquedos: 70, perfumes: 65 },
+  shopee: { moda: 90, beleza: 85, brinquedos: 80, eletronicos: 60, casa: 60, esporte: 65, perfumes: 88 },
+  "amazon-br": { eletronicos: 92, casa: 78, moda: 50, esporte: 70, beleza: 60, brinquedos: 65, perfumes: 70 },
+  magalu: { casa: 90, eletronicos: 82, moda: 55, esporte: 60, beleza: 55, brinquedos: 60, perfumes: 55 },
+  shein: { moda: 95, beleza: 88, brinquedos: 55, eletronicos: 30, casa: 40, esporte: 50, perfumes: 85 },
+  "tiktok-shop": { beleza: 90, moda: 88, perfumes: 92, eletronicos: 55, casa: 45, esporte: 50, brinquedos: 60 },
+  "youtube-shopping": { beleza: 82, moda: 70, perfumes: 85, eletronicos: 75, casa: 55, esporte: 60, brinquedos: 55 },
 };
 
 function hash(input: string): number {

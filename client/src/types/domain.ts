@@ -18,6 +18,7 @@ export interface Marketplace {
   slug: string;
   name: string;
   feePercent: number;
+  fixedFeeBrl?: number;
   titleMaxLength: number;
   descriptionMaxLength: number;
   maxKeywords: number;
@@ -29,6 +30,7 @@ export type ConnectionStatus = "disconnected" | "connected" | "pending";
 export interface PricingBreakdown {
   basePrice: number;
   feePercent: number;
+  fixedFeeBrl: number;
   feeAmount: number;
   listingPrice: number;
 }
@@ -120,6 +122,7 @@ export interface AppSettings {
   optimizationIntervalHours: number;
   optimizationCooldownHours: number;
   usdToBrlRate: number;
+  importTaxPercent: number;
 }
 
 export type SupplierNiche = "perfumes_arabes" | "perfumes_importados_originais" | "geral_b2b";
@@ -134,6 +137,10 @@ export interface SourcingOption {
   unitCostUsdMax: number;
   unitCostBrlMin: number;
   unitCostBrlMax: number;
+  freightUsdPerUnit: number;
+  freightBrlPerUnit: number;
+  landedCostBrlMin: number;
+  landedCostBrlMax: number;
   moq: number;
   leadTimeDays: number;
   riskNotes: string;
@@ -145,6 +152,7 @@ export interface SourcingOption {
 export interface SourcingResearchResult {
   query: string;
   usdToBrlRate: number;
+  importTaxPercent: number;
   summary: string;
   aiProvider: string;
   options: SourcingOption[];

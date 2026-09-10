@@ -94,13 +94,15 @@ Responda APENAS em JSON no formato:
 
   async researchSuppliers(input: ResearchSuppliersInput): Promise<ResearchSuppliersOutput> {
     const prompt = `Você é um consultor de sourcing/importação para revendedores brasileiros de perfumes.
-Os dados abaixo são opções de fornecimento JÁ PESQUISADAS (custo, MOQ, prazo, margem) — você NÃO deve
-inventar fornecedores, preços ou dados novos. Sua tarefa é apenas: (1) escrever uma frase de análise
-estratégica objetiva para cada opção, e (2) um resumo geral de estratégia de compra para a busca "${input.query}",
-considerando risco de autenticidade (especialmente para grifes originais importadas via mercado paralelo)
-e a relação custo x margem.
+Os dados abaixo são opções de fornecimento JÁ PESQUISADAS e JÁ ORDENADAS pelo menor custo total de
+importação (landedCostBrlMin/Max = produto + frete + impostos de referência) — essa é a prioridade
+automática da busca. Você NÃO deve inventar fornecedores, preços ou dados novos, nem reordenar as opções.
+Sua tarefa é apenas: (1) escrever uma frase de análise estratégica objetiva para cada opção, considerando
+o custo total de importação (não só o preço do produto no exterior) e o risco de autenticidade (especialmente
+para grifes originais importadas via mercado paralelo), e (2) um resumo geral de estratégia de compra para
+a busca "${input.query}", destacando a opção de menor custo total.
 
-Opções: ${JSON.stringify(input.options, null, 2)}
+Opções (já ordenadas por landedCostBrlMin crescente): ${JSON.stringify(input.options, null, 2)}
 
 Responda APENAS em JSON no formato:
 {"summary": "...", "reasoningByLeadId": {"<leadId>": "<análise em português>", ...}}`;

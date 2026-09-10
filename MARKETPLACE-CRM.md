@@ -3,10 +3,10 @@
 CRM para conectar seus produtos aos melhores marketplaces. O sistema:
 
 1. **Recomenda o melhor marketplace** para cada produto, com um score e uma justificativa gerados por um modelo de IA (interface plugável para modelos open source via [Ollama](https://ollama.com), com um fallback heurístico que funciona sem nenhuma dependência externa).
-2. **Conecta o produto** ao marketplace escolhido (adapters mockados para Mercado Livre, Shopee, Amazon Brasil, Magazine Luiza e Shein — prontos para receber credenciais reais), já calculando o preço de publicação a partir da taxa daquele marketplace.
+2. **Conecta o produto** ao marketplace escolhido (adapters mockados para Mercado Livre, Shopee, Amazon Brasil, Magazine Luiza, Shein, TikTok Shop e YouTube Shopping — prontos para receber credenciais reais), já calculando o preço de publicação a partir da taxa daquele marketplace.
 3. **Reotimiza continuamente** título, descrição e palavras-chave (SEO) de cada anúncio conectado, em ciclos automáticos, para evitar estagnação no ranking do marketplace.
 4. **Acompanha o financeiro** de cada produto/marketplace: vendas, taxa cobrada e repasse esperado (hoje simulado, pronto para ligar às APIs reais de pedidos de cada marketplace).
-5. **Pesquisa fornecedores de atacado** (foco inicial: perfumes árabes e perfumes importados originais) via IA, com estimativa de custo em BRL, MOQ, prazo, margem e uma calculadora de câmbio — para comprar barato e revender nos marketplaces conectados.
+5. **Pesquisa fornecedores de atacado automaticamente** (foco inicial: perfumes árabes e perfumes importados originais) via IA, ranqueando sempre pelo **menor custo total de importação** (produto + frete + impostos de referência) — não só o preço do produto no exterior —, com MOQ, prazo, margem estimada e uma calculadora de câmbio.
 
 ## Estrutura
 
@@ -68,15 +68,20 @@ Para integrar de verdade:
 
 O restante do sistema (recomendação, otimização, scheduler, rotas, frontend) não precisa mudar — tudo depende apenas dessas interfaces.
 
+### TikTok Shop e YouTube Shopping — particularidades
+
+- **TikTok Shop**: taxa por faixa de preço (pesquisado em set/2026): abaixo de R$ 50 é 10% sem taxa fixa; a partir de R$ 50 é 6% + R$ 6 fixos por item. O catálogo assume a segunda faixa (`feePercent: 6`, `fixedFeeBrl: 6`) por ser a mais comum em perfumaria — confirme no painel de vendedor, pois a estrutura muda com frequência.
+- **YouTube Shopping (Programa de Afiliados)**: não é um marketplace tradicional. Você precisa de loja própria conectada ao Google Merchant Center (hoje, via Shopify) — a venda acontece no seu site, não "dentro" do YouTube. O `feePercent` aqui representa a **comissão que você mesmo define** para pagar aos criadores que marcam seu produto em vídeos (a média do programa é ~15%), não uma taxa cobrada pela plataforma. O repasse da comissão aos criadores é feito via AdSense, 60-120 dias após a compra.
+
 ## Precificação (preço + taxa do marketplace)
 
-Cada produto tem um `basePrice`: o valor líquido que você quer receber por unidade vendida. Cada marketplace conectado tem sua própria `feePercent`. O preço realmente publicado no marketplace (`listingPrice`) é calculado por **precificação reversa** (`server/src/services/pricingService.ts`), para que, depois do marketplace descontar a taxa dele, sobre exatamente o `basePrice`:
+Cada produto tem um `basePrice`: o valor líquido que você quer receber por unidade vendida. Cada marketplace conectado tem sua própria `feePercent` e, opcionalmente, uma `fixedFeeBrl` (taxa fixa por item, ex.: TikTok Shop). O preço realmente publicado no marketplace (`listingPrice`) é calculado por **precificação reversa** (`server/src/services/pricingService.ts`), para que, depois do marketplace descontar taxa + fixo, sobre exatamente o `basePrice`:
 
 ```
-listingPrice = basePrice / (1 - feePercent / 100)
+listingPrice = (basePrice + fixedFeeBrl) / (1 - feePercent / 100)
 ```
 
-Exemplo: produto com preço líquido de R$ 300 num marketplace com taxa de 14% é publicado por **R$ 348,84** (R$ 48,84 de taxa) — o vendedor recebe R$ 300,00 líquidos.
+Exemplo: produto com preço líquido de R$ 300 num marketplace com taxa de 14% (sem taxa fixa) é publicado por **R$ 348,84** (R$ 48,84 de taxa) — o vendedor recebe R$ 300,00 líquidos. Com taxa fixa (ex.: TikTok Shop, R$ 100 líquidos, 6% + R$ 6): publica por **R$ 112,77**.
 
 Esse breakdown (preço base, taxa, preço publicado) aparece:
 - em cada marketplace do ranking de recomendação;
@@ -99,10 +104,11 @@ O que o CRM oferece é uma **visão financeira consolidada**, hoje simulada e pr
 
 Tela **Fornecedores** (`client/src/pages/Sourcing.tsx`) para pesquisar canais de compra no atacado, hoje com foco em **perfumes árabes** e **perfumes importados originais**:
 
-- `server/src/data/supplierLeads.ts` é uma lista curada de referência (marcas árabes de atacado direto como Lattafa, Ard Al Zaafaran, Rasasi, Swiss Arabian, Ajmal, Al Haramain, e linhas "inspired by" como Armaf/Paris Corner/Fragrance World, além de canais de importação paralela para grifes originais e plataformas B2B gerais como Alibaba/TradeKey) — **não é dado ao vivo/raspado**; os custos são faixas de referência para planejamento, sempre confirme preço/MOQ/autenticidade direto com o fornecedor antes de comprar.
-- `server/src/services/sourcingService.ts` filtra esse catálogo pela busca, converte o custo para BRL usando `settings.usdToBrlRate` (cotação que você atualiza manualmente em Configurações — não é uma cotação ao vivo), calcula a margem estimada se você informar um preço de venda pretendido, e pede à IA (`AIProvider.researchSuppliers`) apenas a análise em texto — os números vêm sempre do catálogo curado, a IA nunca inventa fornecedor ou preço.
+- `server/src/data/supplierLeads.ts` é uma lista curada de referência (marcas árabes de atacado direto como Lattafa, Ard Al Zaafaran, Rasasi, Swiss Arabian, Ajmal, Al Haramain, e linhas "inspired by" como Armaf/Paris Corner/Fragrance World, além de canais de importação paralela para grifes originais e plataformas B2B gerais como Alibaba/TradeKey) — **não é dado ao vivo/raspado**; os custos (incluindo frete de referência por unidade, `freightUsdPerUnit`) são faixas de referência para planejamento, sempre confirme preço/MOQ/autenticidade direto com o fornecedor antes de comprar.
+- `server/src/services/sourcingService.ts` filtra esse catálogo pela busca (a busca roda automaticamente ao abrir a tela, com a query "perfumes" cobrindo todos os nichos por padrão), converte o custo e o frete para BRL usando `settings.usdToBrlRate`, aplica a alíquota de referência `settings.importTaxPercent` (II+IPI+PIS/COFINS+ICMS) para chegar no **custo total de importação por unidade** (`landedCostBrlMin/Max`), calcula a margem estimada sobre esse custo total se você informar um preço de venda pretendido, e pede à IA (`AIProvider.researchSuppliers`) apenas a análise em texto — os números vêm sempre do catálogo curado, a IA nunca inventa fornecedor ou preço.
+- **A ordenação é sempre automática pelo menor custo total de importação** (não pelo menor preço de produto isoladamente) — é a opção marcada como "Menor custo total" na tela.
 - Uma **calculadora de câmbio** de referência compara o custo total pagando o fornecedor por diferentes métodos (conta PJ internacional, remessa bancária, cartão corporativo, carta de crédito), usando spreads típicos (`server/src/data/fxMethods.ts`) — troque por cotações reais da sua fintech/banco quando for pagar de verdade.
-- Um botão em cada opção ("Usar esta opção para criar produto") pré-preenche o formulário de novo produto com nome, categoria, custo de aquisição e palavras-chave, fechando o ciclo: pesquisar fornecedor → cadastrar produto com custo → ver recomendação de marketplace e margem → conectar e vender.
+- Um botão em cada opção ("Usar esta opção para criar produto") pré-preenche o formulário de novo produto com nome, categoria, custo de aquisição (o custo total de importação médio) e palavras-chave, fechando o ciclo: pesquisar fornecedor → cadastrar produto com custo → ver recomendação de marketplace e margem → conectar e vender.
 - A tela também traz um checklist informativo (não é aconselhamento jurídico/tributário) sobre importação comercial de perfumes no Brasil: CNPJ + habilitação no Radar Siscomex, Autorização de Funcionamento (AFE) da Anvisa, classificação NCM 3303, e tributos sobre o valor aduaneiro (II, IPI, PIS/COFINS monofásico, ICMS) — bem diferente do regime simplificado de compras de pessoa física ("remessa conforme"), que não vale para importação comercial em volume.
 
 Para extrapolar para outros nichos além de perfumes: adicione mais entradas a `supplierLeads.ts` (ou troque o módulo por uma integração real com uma API de sourcing B2B) — o resto do fluxo não muda.

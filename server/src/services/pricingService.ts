@@ -7,18 +7,19 @@ function round2(n: number): number {
 
 /**
  * Reverse pricing: the seller sets Product.basePrice as the amount they want
- * to net per sale. Marketplaces charge their fee as a percentage of the
- * published (listing) price, so we solve for the listing price that nets
- * exactly basePrice after that cut:
+ * to net per sale. Marketplaces charge a percentage fee, and some (e.g.
+ * TikTok Shop above a price threshold) also charge a flat fee per item — we
+ * solve for the listing price that nets exactly basePrice after both:
  *
- *   listingPrice - listingPrice * feePercent/100 = basePrice
- *   listingPrice = basePrice / (1 - feePercent/100)
+ *   listingPrice - listingPrice * feePercent/100 - fixedFeeBrl = basePrice
+ *   listingPrice = (basePrice + fixedFeeBrl) / (1 - feePercent/100)
  */
-export function computePricing(basePrice: number, feePercent: number): PricingBreakdown {
-  const safeFeePercent = Math.min(Math.max(feePercent, 0), 95);
-  const listingPrice = round2(basePrice / (1 - safeFeePercent / 100));
+export function computePricing(basePrice: number, marketplace: Pick<Marketplace, "feePercent" | "fixedFeeBrl">): PricingBreakdown {
+  const safeFeePercent = Math.min(Math.max(marketplace.feePercent, 0), 95);
+  const fixedFeeBrl = marketplace.fixedFeeBrl ?? 0;
+  const listingPrice = round2((basePrice + fixedFeeBrl) / (1 - safeFeePercent / 100));
   const feeAmount = round2(listingPrice - basePrice);
-  return { basePrice: round2(basePrice), feePercent, feeAmount, listingPrice };
+  return { basePrice: round2(basePrice), feePercent: marketplace.feePercent, fixedFeeBrl, feeAmount, listingPrice };
 }
 
 /**
@@ -32,7 +33,7 @@ export async function syncConnectionPricing(
   product: Product,
   marketplace: Marketplace
 ): Promise<PricingBreakdown> {
-  const pricing = computePricing(product.basePrice, marketplace.feePercent);
+  const pricing = computePricing(product.basePrice, marketplace);
   const adapter = getMarketplaceAdapter(marketplace.slug);
   await adapter.publishListing({
     externalListingId: connection.externalListingId,

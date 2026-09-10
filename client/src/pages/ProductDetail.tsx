@@ -216,7 +216,8 @@ export function ProductDetail() {
                   <p className="text-sm text-slate-600 mt-2">{entry.reasoning}</p>
                   <p className="text-xs text-slate-500 mt-2">
                     Publicar por <span className="font-medium text-slate-700">{formatBRL(entry.pricing.listingPrice)}</span> para
-                    você receber {formatBRL(entry.pricing.basePrice)} líquidos (taxa de {entry.pricing.feePercent}% ={" "}
+                    você receber {formatBRL(entry.pricing.basePrice)} líquidos (taxa de {entry.pricing.feePercent}%
+                    {entry.pricing.fixedFeeBrl > 0 ? ` + ${formatBRL(entry.pricing.fixedFeeBrl)} fixos` : ""} ={" "}
                     {formatBRL(entry.pricing.feeAmount)}).
                   </p>
                 </li>
@@ -281,7 +282,9 @@ export function ProductDetail() {
                         Preço publicado: <span className="font-medium text-slate-800">{formatBRL(conn.pricing.listingPrice)}</span>
                       </span>
                       <span>
-                        Taxa do marketplace ({conn.pricing.feePercent}%): {formatBRL(conn.pricing.feeAmount)}
+                        Taxa do marketplace ({conn.pricing.feePercent}%
+                        {conn.pricing.fixedFeeBrl > 0 ? ` + ${formatBRL(conn.pricing.fixedFeeBrl)} fixos` : ""}):{" "}
+                        {formatBRL(conn.pricing.feeAmount)}
                       </span>
                       <span>
                         Você recebe: <span className="font-medium text-slate-800">{formatBRL(conn.pricing.basePrice)}</span> por

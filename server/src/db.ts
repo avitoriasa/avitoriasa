@@ -33,6 +33,8 @@ const defaultSettings: AppSettings = {
   optimizationCooldownHours: Number(process.env.OPTIMIZATION_COOLDOWN_HOURS) || 24,
   // Placeholder — não é uma cotação ao vivo. Atualize em Configurações ou via USD_TO_BRL_RATE.
   usdToBrlRate: Number(process.env.USD_TO_BRL_RATE) || 5.3,
+  // Estimativa grosseira (II+IPI+PIS/COFINS+ICMS sobre custo+frete) — confirme com despachante/contador.
+  importTaxPercent: Number(process.env.IMPORT_TAX_PERCENT) || 60,
 };
 
 function emptySchema(): Schema {

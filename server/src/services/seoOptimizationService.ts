@@ -30,7 +30,7 @@ export async function optimizeConnection(
 
   // Recompute pricing from the product's current base price in case it
   // changed since the last cycle — the marketplace fee never gets stale.
-  const pricing = computePricing(product.basePrice, marketplace.feePercent);
+  const pricing = computePricing(product.basePrice, marketplace);
 
   const adapter = getMarketplaceAdapter(marketplace.slug);
   const published = await adapter.publishListing({
