@@ -40,6 +40,8 @@ export interface MarketplaceAdapter {
   readonly slug: string;
   connect(credentials: Record<string, string>): Promise<{ connected: true }>;
   publishListing(input: PublishListingInput): Promise<PublishListingResult>;
+  /** Tira o anúncio do ar sem apagá-lo, para o dono poder retomar depois. */
+  unpublishListing(externalListingId: string): Promise<{ unpublished: true }>;
   fetchOrders(input: FetchOrdersInput): Promise<FetchedOrder[]>;
 }
 
@@ -57,6 +59,12 @@ class MockMarketplaceAdapter implements MarketplaceAdapter {
     // "update item" request on most marketplace seller APIs).
     const externalListingId = input.externalListingId ?? `${this.slug}-${Date.now().toString(36)}`;
     return { externalListingId, publishedAt: new Date().toISOString() };
+  }
+
+  async unpublishListing(_externalListingId: string): Promise<{ unpublished: true }> {
+    // TODO: replace with the marketplace's real "pause/close listing" call
+    // (e.g. Mercado Livre item status=paused, Shopee unlist item).
+    return { unpublished: true };
   }
 
   async fetchOrders(input: FetchOrdersInput): Promise<FetchedOrder[]> {

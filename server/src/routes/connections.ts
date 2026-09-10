@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getConfiguredAIProvider } from "../ai/index.js";
 import { db } from "../db.js";
+import { pauseConnection, removeConnection, resumeConnection } from "../services/publishingService.js";
 import { optimizeConnection } from "../services/seoOptimizationService.js";
 
 export const connectionsRouter = Router();
@@ -23,13 +24,29 @@ connectionsRouter.get("/:id/history", async (req, res) => {
   res.json(history);
 });
 
-connectionsRouter.delete("/:id", async (req, res) => {
-  const store = await db.read();
-  const connection = store.connections.find((c) => c.id === req.params.id);
-  if (!connection) return res.status(404).json({ error: "Conexão não encontrada" });
+/** Comando do dono: tirar o anúncio do ar temporariamente. */
+connectionsRouter.post("/:id/pause", async (req, res) => {
+  try {
+    res.json(await pauseConnection(req.params.id));
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
 
-  connection.status = "disconnected";
-  store.connections = store.connections.map((c) => (c.id === connection.id ? connection : c));
-  await db.save();
-  res.json(connection);
+/** Comando do dono: recolocar no ar um anúncio pausado. */
+connectionsRouter.post("/:id/resume", async (req, res) => {
+  try {
+    const aiProvider = await getConfiguredAIProvider();
+    res.json(await resumeConnection(req.params.id, aiProvider));
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+connectionsRouter.delete("/:id", async (req, res) => {
+  try {
+    res.json(await removeConnection(req.params.id));
+  } catch (err) {
+    res.status(404).json({ error: (err as Error).message });
+  }
 });

@@ -1,6 +1,6 @@
 # Marketplace CRM com IA
 
-CRM para conectar seus produtos aos melhores marketplaces. O sistema:
+CRM para conectar seus produtos aos melhores marketplaces. **O dono só gerencia e dá o comando**: a IA pesquisa, calcula e sugere, mas nada entra ou sai de um marketplace sem ele aprovar na [Central de comando](#central-de-comando-o-dono-decide-a-ia-executa). O sistema:
 
 1. **Recomenda o melhor marketplace** para cada produto, com um score e uma justificativa gerados por um modelo de IA (interface plugável para modelos open source via [Ollama](https://ollama.com), com um fallback heurístico que funciona sem nenhuma dependência externa).
 2. **Conecta o produto** ao marketplace escolhido (adapters mockados para Mercado Livre, Shopee, Amazon Brasil, Magazine Luiza, Shein, TikTok Shop e YouTube Shopping — prontos para receber credenciais reais), já calculando o preço de publicação a partir da taxa daquele marketplace.
@@ -10,6 +10,30 @@ CRM para conectar seus produtos aos melhores marketplaces. O sistema:
 6. **Funciona nos dois modelos, com dropshipping como padrão**: compre por pedido só depois que a venda acontece (sem comprar antes) — e, quando você preferir comprar no atacado e manter estoque, o **controle de estoques** entra automaticamente em ação.
 7. **Multiagentes de IA** rodam uma "esteira" por opção de fornecedor escolhida: um agente analisa a confiança do fornecedor e, se fizer sentido manter estoque, outro agente sugere o plano de reposição — cada agente usa o modelo configurado (heurístico ou Ollama/Llama).
 8. **Analisa tendências de busca (Google Trends, Brasil) e sugere SEO/anúncios pagos**: um agente de IA cruza o interesse de busca de palavras-chave relacionadas ao produto com a aderência ao próprio produto, ranqueia as melhores oportunidades e rascunha um anúncio pago com orçamento de referência — para colar no gerenciador de anúncios de cada marketplace, não para disparar campanha sozinho.
+
+## Central de comando (o dono decide, a IA executa)
+
+A tela inicial do app é a **Central de comando**: é lá que o dono toca o negócio sem precisar entender nada de técnico. O princípio é um só — **a IA pesquisa, calcula e sugere; quem manda o produto pro ar (ou tira) é o dono**.
+
+**O que aparece na tela:**
+
+1. **Esperando sua decisão** — cada coisa que a IA quer fazer vira um cartão com dois botões, **Aprovar** e **Recusar**:
+   - *Publicar no marketplace*: "Publicar 'Perfume Árabe Khamrah' em Shein", já mostrando por quanto seria publicado, quanto o dono recebe líquido e a pontuação daquele marketplace para o produto.
+   - *Melhorar anúncio no ar*: mostra o título atual e o título proposto lado a lado, com as novas palavras-chave e o motivo da IA.
+   
+   Enquanto o cartão estiver pendente, **nada muda no marketplace**. Recusar descarta a proposta e o anúncio segue exatamente como estava.
+2. **No ar agora / Pausados por você** — a lista do que está à venda, com botão **Pausar** (tira do ar sem apagar) e **Voltar ao ar**. Anúncio pausado não recebe proposta de otimização nem novos pedidos.
+3. **Estoque acabando** — alerta dos produtos em modo estoque que bateram o ponto de reposição.
+4. **Suas últimas decisões** — o histórico do que ele aprovou/recusou e o que aconteceu depois de cada decisão.
+
+**Quem decide as mudanças** (tela de Configurações):
+
+- **"Eu aprovo tudo" (padrão)** — a IA só propõe. Nenhum título, descrição ou palavra-chave muda sozinho.
+- **"A IA pode reotimizar sozinha"** — a IA atualiza o SEO dos anúncios que já estão no ar sem perguntar.
+
+**Colocar um produto num marketplace novo sempre exige aprovação do dono, nos dois modos** — é a decisão que muda o que está à venda, então nunca é automática. O ciclo automático (`schedulerService.ts`) respeita isso: em modo manual ele chama `approvalService.proposeSeoUpdate` em vez de `optimizeConnection`, e propostas duplicadas para o mesmo anúncio não são criadas.
+
+Onde isso vive no código: `services/approvalService.ts` (fila de decisões), `services/publishingService.ts` (os comandos do dono: publicar/pausar/retomar/retirar) e `seoOptimizationService.ts`, que foi separado em `generateListingUpdate` (só gera a proposta, não publica) e `applyListingUpdate` (publica de fato, depois do aval).
 
 ## Estrutura
 
@@ -222,3 +246,10 @@ Também é possível disparar manualmente:
 | POST | `/api/products/:id/inventory/adjust` | ajustar estoque manualmente (contagem física) |
 | PUT | `/api/products/:id/inventory/reorder-point` | definir o ponto de reposição |
 | POST | `/api/trends/analyze` | rodar o agente de tendências/SEO/anúncios pagos para um produto |
+| GET | `/api/command-center` | tudo da tela inicial do dono numa chamada (pendências, no ar, pausados, alertas, financeiro) |
+| GET | `/api/approvals` | fila de decisões (aprovadas, recusadas e pendentes) |
+| POST | `/api/approvals/refresh` | pedir à IA que monte agora novas sugestões de publicação |
+| POST | `/api/approvals/:id/approve` | aprovar — só aqui a mudança chega ao marketplace |
+| POST | `/api/approvals/:id/reject` | recusar — nada é alterado |
+| POST | `/api/connections/:id/pause` | tirar o anúncio do ar temporariamente |
+| POST | `/api/connections/:id/resume` | recolocar no ar um anúncio pausado |

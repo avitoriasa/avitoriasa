@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import {
   AppSettings,
+  ApprovalRequest,
   InventoryItemSnapshot,
   Marketplace,
   OptimizationLogEntry,
@@ -28,11 +29,14 @@ interface Schema {
   trustedSuppliers: TrustedSupplier[];
   inventoryItems: InventoryItemSnapshot[];
   stockMovements: StockMovement[];
+  approvals: ApprovalRequest[];
   settings: AppSettings;
 }
 
 const defaultSettings: AppSettings = {
   aiProvider: (process.env.AI_PROVIDER as "ollama" | "heuristic") || "heuristic",
+  // Padrão: nada muda nos anúncios sem o dono aprovar na central de comando.
+  approvalMode: process.env.APPROVAL_MODE === "automatico" ? "automatico" : "manual",
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434",
   ollamaModel: process.env.OLLAMA_MODEL || "llama3",
   optimizationIntervalHours: Number(process.env.OPTIMIZATION_INTERVAL_HOURS) || 6,
@@ -58,6 +62,7 @@ function emptySchema(): Schema {
     trustedSuppliers: [],
     inventoryItems: [],
     stockMovements: [],
+    approvals: [],
     settings: defaultSettings,
   };
 }

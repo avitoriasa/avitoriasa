@@ -41,7 +41,13 @@ export interface Marketplace {
   notes: string;
 }
 
-export type ConnectionStatus = "disconnected" | "connected" | "pending";
+/**
+ * "connected": no ar no marketplace.
+ * "paused": o dono tirou do ar temporariamente — o anúncio existe, mas não
+ * recebe otimização automática nem novos pedidos até ser retomado.
+ * "disconnected": removido do marketplace.
+ */
+export type ConnectionStatus = "disconnected" | "connected" | "pending" | "paused";
 
 /**
  * Breakdown of how a product's desired net price (Product.basePrice)
@@ -164,8 +170,18 @@ export interface FinancialSummary {
   paidOut: number;
 }
 
+/**
+ * "manual" (padrão): a IA só PROPÕE mudanças nos anúncios já no ar; nada é
+ * alterado até o dono aprovar na central de comando.
+ * "automatico": a IA aplica sozinha as reotimizações de SEO dos anúncios que
+ * já estão no ar. Publicar um produto num marketplace novo continua exigindo
+ * aprovação do dono nos dois modos — é ele quem decide o que vai pro ar.
+ */
+export type ApprovalMode = "manual" | "automatico";
+
 export interface AppSettings {
   aiProvider: "ollama" | "heuristic";
+  approvalMode: ApprovalMode;
   ollamaBaseUrl: string;
   ollamaModel: string;
   optimizationIntervalHours: number;
@@ -455,6 +471,109 @@ export interface AdCopyBrief {
   primaryText: string;
   targetingNotes: string;
   suggestedKeywords: string[];
+}
+
+/**
+ * O que a IA pode PROPOR ao dono — nunca executar por conta própria quando
+ * o app está em modo manual (ver AppSettings.approvalMode):
+ * "publicar": colocar um produto à venda num marketplace onde ele ainda não
+ * está — essa decisão SEMPRE passa pelo dono, nos dois modos.
+ * "otimizar_seo": reescrever título/descrição/palavras-chave de um anúncio
+ * que já está no ar.
+ */
+export type ApprovalType = "publicar" | "otimizar_seo";
+
+export type ApprovalStatus = "pendente" | "aprovado" | "recusado";
+
+/** Dados da proposta de publicar um produto num marketplace novo. */
+export interface PublishProposalPayload {
+  marketplaceId: string;
+  marketplaceName: string;
+  /** Pontuação da recomendação de marketplace que motivou a proposta (0-100). */
+  recommendationScore: number;
+  /** Preço que seria publicado, já com a taxa do marketplace embutida. */
+  listingPrice: number;
+  /** Valor líquido que o dono recebe por venda nesse preço. */
+  netPrice: number;
+}
+
+/** Dados da proposta de reescrever um anúncio que já está no ar. */
+export interface SeoProposalPayload {
+  connectionId: string;
+  marketplaceId: string;
+  marketplaceName: string;
+  previousTitle: string;
+  newTitle: string;
+  previousDescription: string;
+  newDescription: string;
+  previousKeywords: string[];
+  newKeywords: string[];
+}
+
+interface ApprovalRequestBase {
+  id: string;
+  status: ApprovalStatus;
+  productId: string;
+  productName: string;
+  /** Frase curta que o dono lê para decidir sem precisar abrir mais nada. */
+  summary: string;
+  /** Justificativa escrita pela IA para essa proposta. */
+  aiReasoning: string;
+  createdAt: string;
+  decidedAt: string | null;
+  /** Preenchido na decisão: o que de fato aconteceu depois dela. */
+  outcome: string | null;
+}
+
+export interface PublishApprovalRequest extends ApprovalRequestBase {
+  type: "publicar";
+  payload: PublishProposalPayload;
+}
+
+export interface SeoApprovalRequest extends ApprovalRequestBase {
+  type: "otimizar_seo";
+  payload: SeoProposalPayload;
+}
+
+/**
+ * Uma decisão aguardando o dono. Nada aqui é aplicado até ele aprovar — é o
+ * mecanismo central do app: a IA sugere, o dono comanda.
+ */
+export type ApprovalRequest = PublishApprovalRequest | SeoApprovalRequest;
+
+/** Um anúncio no ar (ou pausado), na visão da central de comando. */
+export interface ListingOverview {
+  connectionId: string;
+  productId: string;
+  productName: string;
+  marketplaceId: string;
+  marketplaceName: string;
+  status: ConnectionStatus;
+  listingPrice: number;
+  netPrice: number;
+  currentTitle: string;
+  rankScore: number;
+  lastOptimizedAt: string | null;
+}
+
+/** Produto em modo estoque que bateu o ponto de reposição. */
+export interface LowStockAlert {
+  productId: string;
+  productName: string;
+  quantityOnHand: number;
+  reorderPoint: number;
+}
+
+/** Tudo que a tela inicial do dono precisa, em uma única chamada. */
+export interface CommandCenterSummary {
+  approvalMode: ApprovalMode;
+  pendingApprovals: ApprovalRequest[];
+  recentDecisions: ApprovalRequest[];
+  liveListings: ListingOverview[];
+  pausedListings: ListingOverview[];
+  lowStockAlerts: LowStockAlert[];
+  financial: FinancialSummary;
+  productCount: number;
 }
 
 /**

@@ -2,6 +2,8 @@ import "dotenv/config";
 import cors from "cors";
 import express from "express";
 import { agentsRouter } from "./routes/agents.js";
+import { approvalsRouter } from "./routes/approvals.js";
+import { commandCenterRouter } from "./routes/commandCenter.js";
 import { connectionsRouter } from "./routes/connections.js";
 import { marketplacesRouter } from "./routes/marketplaces.js";
 import { optimizationsRouter } from "./routes/optimizations.js";
@@ -23,6 +25,8 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/agents", agentsRouter);
+app.use("/api/approvals", approvalsRouter);
+app.use("/api/command-center", commandCenterRouter);
 app.use("/api/products", productsRouter);
 app.use("/api/marketplaces", marketplacesRouter);
 app.use("/api/connections", connectionsRouter);

@@ -1,5 +1,7 @@
 import type {
   AppSettings,
+  ApprovalRequest,
+  CommandCenterSummary,
   DropshipEstimate,
   FinancialSummary,
   FulfillmentMode,
@@ -143,6 +145,17 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ reorderPoint }),
     }),
+
+  getCommandCenter: () => request<CommandCenterSummary>("/command-center"),
+  listApprovals: () => request<ApprovalRequest[]>("/approvals"),
+  refreshApprovals: () => request<{ created: number }>("/approvals/refresh", { method: "POST" }),
+  approveRequest: (id: string) => request<ApprovalRequest>(`/approvals/${id}/approve`, { method: "POST" }),
+  rejectRequest: (id: string) => request<ApprovalRequest>(`/approvals/${id}/reject`, { method: "POST" }),
+
+  pauseListing: (connectionId: string) =>
+    request<ProductMarketplaceConnection>(`/connections/${connectionId}/pause`, { method: "POST" }),
+  resumeListing: (connectionId: string) =>
+    request<ProductMarketplaceConnection>(`/connections/${connectionId}/resume`, { method: "POST" }),
 
   analyzeTrends: (productId: string, marketplaceId?: string) =>
     request<TrendsAnalysisResult>("/trends/analyze", {

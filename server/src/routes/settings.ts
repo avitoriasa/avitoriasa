@@ -15,6 +15,8 @@ settingsRouter.put("/", async (req, res) => {
   const body = req.body ?? {};
   const updated: AppSettings = {
     aiProvider: body.aiProvider === "ollama" ? "ollama" : body.aiProvider === "heuristic" ? "heuristic" : store.settings.aiProvider,
+    approvalMode:
+      body.approvalMode === "manual" || body.approvalMode === "automatico" ? body.approvalMode : store.settings.approvalMode,
     ollamaBaseUrl: body.ollamaBaseUrl ?? store.settings.ollamaBaseUrl,
     ollamaModel: body.ollamaModel ?? store.settings.ollamaModel,
     optimizationIntervalHours: body.optimizationIntervalHours !== undefined ? Number(body.optimizationIntervalHours) : store.settings.optimizationIntervalHours,

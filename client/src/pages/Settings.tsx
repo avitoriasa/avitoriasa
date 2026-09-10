@@ -42,6 +42,40 @@ export function Settings() {
 
       <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-slate-200 p-5 flex flex-col gap-4">
         <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-medium text-slate-700 mb-1">Quem decide as mudanças nos anúncios</legend>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              className="mt-1"
+              checked={settings.approvalMode === "manual"}
+              onChange={() => setSettings({ ...settings, approvalMode: "manual" })}
+            />
+            <span>
+              <span className="font-medium">Eu aprovo tudo (recomendado)</span>
+              <span className="block text-xs text-slate-500">
+                A IA só sugere. Nenhum título, descrição ou palavra-chave muda nos seus anúncios sem você aprovar na
+                Central de comando.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              className="mt-1"
+              checked={settings.approvalMode === "automatico"}
+              onChange={() => setSettings({ ...settings, approvalMode: "automatico" })}
+            />
+            <span>
+              <span className="font-medium">A IA pode reotimizar sozinha</span>
+              <span className="block text-xs text-slate-500">
+                A IA atualiza o SEO dos anúncios que já estão no ar sem perguntar. Colocar um produto num marketplace
+                novo continua exigindo a sua aprovação.
+              </span>
+            </span>
+          </label>
+        </fieldset>
+
+        <fieldset className="flex flex-col gap-2">
           <legend className="text-sm font-medium text-slate-700 mb-1">Provedor de IA</legend>
           <label className="flex items-center gap-2 text-sm">
             <input

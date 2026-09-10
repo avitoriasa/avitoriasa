@@ -2,10 +2,10 @@ import { Router } from "express";
 import { v4 as uuid } from "uuid";
 import { getConfiguredAIProvider } from "../ai/index.js";
 import { db } from "../db.js";
-import { computePricing, syncConnectionPricing } from "../services/pricingService.js";
+import { syncConnectionPricing } from "../services/pricingService.js";
+import { publishProductToMarketplace } from "../services/publishingService.js";
 import { generateRecommendation, getLatestRecommendation } from "../services/recommendationService.js";
-import { optimizeConnection } from "../services/seoOptimizationService.js";
-import { Product, ProductMarketplaceConnection } from "../types.js";
+import { Product } from "../types.js";
 
 export const productsRouter = Router();
 
@@ -139,43 +139,16 @@ productsRouter.get("/:id/connections", async (req, res) => {
   res.json(connections);
 });
 
+/** Comando direto do dono: colocar este produto à venda neste marketplace agora. */
 productsRouter.post("/:id/connections", async (req, res) => {
   const { marketplaceId } = req.body ?? {};
   if (!marketplaceId) return res.status(400).json({ error: "marketplaceId é obrigatório" });
 
-  const store = await db.read();
-  const product = store.products.find((p) => p.id === req.params.id);
-  const marketplace = store.marketplaces.find((m) => m.id === marketplaceId);
-  if (!product) return res.status(404).json({ error: "Produto não encontrado" });
-  if (!marketplace) return res.status(404).json({ error: "Marketplace não encontrado" });
-
-  const existing = store.connections.find((c) => c.productId === product.id && c.marketplaceId === marketplaceId);
-  if (existing) return res.status(409).json({ error: "Produto já conectado a esse marketplace", connection: existing });
-
-  const connection: ProductMarketplaceConnection = {
-    id: uuid(),
-    productId: product.id,
-    marketplaceId,
-    status: "connected",
-    externalListingId: null,
-    currentTitle: product.name,
-    currentDescription: product.description,
-    currentKeywords: product.keywords,
-    pricing: computePricing(product.basePrice, marketplace),
-    rankScore: 50,
-    lastOptimizedAt: null,
-    createdAt: new Date().toISOString(),
-  };
-  store.connections.push(connection);
-  await db.save();
-
   try {
     const aiProvider = await getConfiguredAIProvider();
-    await optimizeConnection(connection.id, aiProvider);
+    const connection = await publishProductToMarketplace(req.params.id, marketplaceId, aiProvider);
+    res.status(201).json(connection);
   } catch (err) {
-    console.error("[products] Falha na otimização inicial:", (err as Error).message);
+    res.status(400).json({ error: (err as Error).message });
   }
-
-  const store2 = await db.read();
-  res.status(201).json(store2.connections.find((c) => c.id === connection.id));
 });

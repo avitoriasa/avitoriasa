@@ -33,7 +33,7 @@ export interface Marketplace {
   notes: string;
 }
 
-export type ConnectionStatus = "disconnected" | "connected" | "pending";
+export type ConnectionStatus = "disconnected" | "connected" | "pending" | "paused";
 
 export interface PricingBreakdown {
   basePrice: number;
@@ -130,8 +130,16 @@ export interface FinancialSummary {
   paidOut: number;
 }
 
+/**
+ * "manual": a IA só propõe mudanças; nada muda nos anúncios sem o dono aprovar.
+ * "automatico": a IA aplica sozinha as reotimizações de SEO dos anúncios no ar.
+ * Publicar num marketplace novo sempre exige aprovação do dono, nos dois modos.
+ */
+export type ApprovalMode = "manual" | "automatico";
+
 export interface AppSettings {
   aiProvider: "ollama" | "heuristic";
+  approvalMode: ApprovalMode;
   ollamaBaseUrl: string;
   ollamaModel: string;
   optimizationIntervalHours: number;
@@ -292,6 +300,85 @@ export interface AdCopyBrief {
   primaryText: string;
   targetingNotes: string;
   suggestedKeywords: string[];
+}
+
+export type ApprovalType = "publicar" | "otimizar_seo";
+export type ApprovalStatus = "pendente" | "aprovado" | "recusado";
+
+export interface PublishProposalPayload {
+  marketplaceId: string;
+  marketplaceName: string;
+  recommendationScore: number;
+  listingPrice: number;
+  netPrice: number;
+}
+
+export interface SeoProposalPayload {
+  connectionId: string;
+  marketplaceId: string;
+  marketplaceName: string;
+  previousTitle: string;
+  newTitle: string;
+  previousDescription: string;
+  newDescription: string;
+  previousKeywords: string[];
+  newKeywords: string[];
+}
+
+interface ApprovalRequestBase {
+  id: string;
+  status: ApprovalStatus;
+  productId: string;
+  productName: string;
+  summary: string;
+  aiReasoning: string;
+  createdAt: string;
+  decidedAt: string | null;
+  outcome: string | null;
+}
+
+export interface PublishApprovalRequest extends ApprovalRequestBase {
+  type: "publicar";
+  payload: PublishProposalPayload;
+}
+
+export interface SeoApprovalRequest extends ApprovalRequestBase {
+  type: "otimizar_seo";
+  payload: SeoProposalPayload;
+}
+
+export type ApprovalRequest = PublishApprovalRequest | SeoApprovalRequest;
+
+export interface ListingOverview {
+  connectionId: string;
+  productId: string;
+  productName: string;
+  marketplaceId: string;
+  marketplaceName: string;
+  status: ConnectionStatus;
+  listingPrice: number;
+  netPrice: number;
+  currentTitle: string;
+  rankScore: number;
+  lastOptimizedAt: string | null;
+}
+
+export interface LowStockAlert {
+  productId: string;
+  productName: string;
+  quantityOnHand: number;
+  reorderPoint: number;
+}
+
+export interface CommandCenterSummary {
+  approvalMode: ApprovalMode;
+  pendingApprovals: ApprovalRequest[];
+  recentDecisions: ApprovalRequest[];
+  liveListings: ListingOverview[];
+  pausedListings: ListingOverview[];
+  lowStockAlerts: LowStockAlert[];
+  financial: FinancialSummary;
+  productCount: number;
 }
 
 export type RegionCode = "norte" | "nordeste" | "centro_oeste" | "sudeste" | "sul";

@@ -86,6 +86,22 @@ export function ProductDetail() {
     }
   }
 
+  async function handlePauseOrResume(connectionId: string, paused: boolean) {
+    setBusyMarketplaceId(connectionId);
+    try {
+      if (paused) {
+        await api.resumeListing(connectionId);
+      } else {
+        await api.pauseListing(connectionId);
+      }
+      await load();
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setBusyMarketplaceId(null);
+    }
+  }
+
   async function handleOptimizeNow(connectionId: string) {
     setBusyMarketplaceId(connectionId);
     try {
@@ -243,7 +259,7 @@ export function ProductDetail() {
 
       <section className="bg-white rounded-lg border border-slate-200 p-5">
         <h3 className="font-medium text-slate-900 mb-3">Marketplaces conectados</h3>
-        {connections.filter((c) => c.status === "connected").length === 0 ? (
+        {connections.filter((c) => c.status === "connected" || c.status === "paused").length === 0 ? (
           <p className="text-sm text-slate-500">
             Conecte o produto a um marketplace recomendado acima para a IA começar a otimizar título, descrição e
             palavras-chave automaticamente.
@@ -251,17 +267,34 @@ export function ProductDetail() {
         ) : (
           <ul className="flex flex-col gap-4">
             {connections
-              .filter((c) => c.status === "connected")
+              .filter((c) => c.status === "connected" || c.status === "paused")
               .map((conn) => {
                 const marketplace = marketplaces.find((m) => m.id === conn.marketplaceId);
+                const paused = conn.status === "paused";
                 return (
-                  <li key={conn.id} className="border border-slate-200 rounded-md p-4">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-slate-900">{marketplace?.name ?? conn.marketplaceId}</span>
+                  <li key={conn.id} className={`border rounded-md p-4 ${paused ? "border-amber-300 bg-amber-50/40" : "border-slate-200"}`}>
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <span className="font-medium text-slate-900 flex items-center gap-2">
+                        {marketplace?.name ?? conn.marketplaceId}
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full ${
+                            paused ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          {paused ? "Pausado" : "No ar"}
+                        </span>
+                      </span>
                       <div className="flex items-center gap-3 text-sm">
                         <button
-                          onClick={() => handleOptimizeNow(conn.id)}
+                          onClick={() => handlePauseOrResume(conn.id, paused)}
                           disabled={busyMarketplaceId === conn.id}
+                          className="text-amber-700 hover:underline disabled:opacity-50"
+                        >
+                          {busyMarketplaceId === conn.id ? "..." : paused ? "Voltar ao ar" : "Pausar"}
+                        </button>
+                        <button
+                          onClick={() => handleOptimizeNow(conn.id)}
+                          disabled={busyMarketplaceId === conn.id || paused}
                           className="text-indigo-600 hover:underline disabled:opacity-50"
                         >
                           {busyMarketplaceId === conn.id ? "Otimizando..." : "Otimizar agora"}
