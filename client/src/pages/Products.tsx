@@ -2,14 +2,24 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
-import type { Product } from "../types/domain";
+import type { FulfillmentMode, Product } from "../types/domain";
 
-const emptyForm = { name: "", description: "", category: "", basePrice: "", costBasis: "", sku: "", keywords: "" };
+const emptyForm = {
+  name: "",
+  description: "",
+  category: "",
+  basePrice: "",
+  costBasis: "",
+  fulfillmentMode: "stock" as FulfillmentMode,
+  sku: "",
+  keywords: "",
+};
 
 export interface ProductPrefill {
   name?: string;
   category?: string;
   costBasis?: number;
+  fulfillmentMode?: FulfillmentMode;
   keywords?: string[];
   description?: string;
 }
@@ -41,6 +51,7 @@ export function Products() {
       category: prefill.category ?? "",
       description: prefill.description ?? "",
       costBasis: prefill.costBasis !== undefined ? String(prefill.costBasis) : "",
+      fulfillmentMode: prefill.fulfillmentMode ?? "stock",
       keywords: (prefill.keywords ?? []).join(", "),
     });
     setEditingId(null);
@@ -62,6 +73,7 @@ export function Products() {
       category: p.category,
       basePrice: String(p.basePrice),
       costBasis: p.costBasis !== undefined ? String(p.costBasis) : "",
+      fulfillmentMode: p.fulfillmentMode,
       sku: p.sku,
       keywords: p.keywords.join(", "),
     });
@@ -79,6 +91,7 @@ export function Products() {
       category: form.category,
       basePrice: Number(form.basePrice),
       costBasis: form.costBasis.trim() === "" ? null : Number(form.costBasis),
+      fulfillmentMode: form.fulfillmentMode,
       sku: form.sku,
       keywords: form.keywords
         .split(",")
@@ -180,6 +193,26 @@ export function Products() {
               </span>
             )}
           </Field>
+          <Field label="Como você vai vender?" full>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  checked={form.fulfillmentMode === "stock"}
+                  onChange={() => setForm({ ...form, fulfillmentMode: "stock" })}
+                />
+                Estoque (compro no atacado e guardo)
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  checked={form.fulfillmentMode === "dropship"}
+                  onChange={() => setForm({ ...form, fulfillmentMode: "dropship" })}
+                />
+                Dropshipping (compro por pedido, sem estoque)
+              </label>
+            </div>
+          </Field>
           <Field label="SKU" required>
             <input className="input" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} required />
           </Field>
@@ -232,6 +265,13 @@ export function Products() {
                 {p.name}
               </Link>
               <p className="text-sm text-slate-500">
+                <span
+                  className={`inline-block text-xs px-2 py-0.5 rounded-full mr-1 ${
+                    p.fulfillmentMode === "dropship" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {p.fulfillmentMode === "dropship" ? "Dropshipping" : "Estoque"}
+                </span>
                 {p.category} · SKU {p.sku} · líquido desejado R$ {p.basePrice.toFixed(2)}
                 {p.costBasis !== undefined && (
                   <>

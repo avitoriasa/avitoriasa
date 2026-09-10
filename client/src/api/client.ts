@@ -1,6 +1,8 @@
 import type {
   AppSettings,
+  DropshipEstimate,
   FinancialSummary,
+  FulfillmentMode,
   FxMethod,
   Marketplace,
   OptimizationLogEntry,
@@ -18,6 +20,7 @@ export interface ProductInput {
   basePrice: number;
   /** Pass null to clear a previously-set cost basis. */
   costBasis?: number | null;
+  fulfillmentMode?: FulfillmentMode;
   sku: string;
   keywords: string[];
 }
@@ -88,5 +91,21 @@ export const api = {
     request<SourcingResearchResult>("/sourcing/research", {
       method: "POST",
       body: JSON.stringify({ query, desiredResalePrice }),
+    }),
+  estimateDropship: (sourcePriceUsd: number, shippingBrl: number, isRemessaConformePlatform: boolean) =>
+    request<DropshipEstimate>("/sourcing/dropship-estimate", {
+      method: "POST",
+      body: JSON.stringify({ sourcePriceUsd, shippingBrl, isRemessaConformePlatform }),
+    }),
+
+  updateOrderTracking: (orderId: string, carrier: string, trackingNumber: string) =>
+    request<Order>(`/orders/${orderId}/tracking`, {
+      method: "PUT",
+      body: JSON.stringify({ carrier, trackingNumber }),
+    }),
+  recordDropshipPurchase: (orderId: string, sourcePurchaseCostBrl: number, sourceTaxEstimateBrl: number) =>
+    request<Order>(`/orders/${orderId}/dropship-purchase`, {
+      method: "PUT",
+      body: JSON.stringify({ sourcePurchaseCostBrl, sourceTaxEstimateBrl }),
     }),
 };

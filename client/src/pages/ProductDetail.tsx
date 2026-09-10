@@ -344,24 +344,18 @@ export function ProductDetail() {
                         {(orders[conn.id]?.length ?? 0) === 0 ? (
                           <p className="text-xs text-slate-400">Nenhum pedido ainda.</p>
                         ) : (
-                          <ul className="flex flex-col gap-2">
+                          <ul className="flex flex-col gap-3">
                             {orders[conn.id].map((order) => (
-                              <li key={order.id} className="text-xs text-slate-500 flex justify-between gap-3">
-                                <span>
-                                  <span className="text-slate-400">{new Date(order.soldAt).toLocaleString("pt-BR")}</span>{" "}
-                                  — bruto {formatBRL(order.grossAmount)}, taxa {formatBRL(order.feeAmount)}, líquido{" "}
-                                  <span className="text-slate-700 font-medium">{formatBRL(order.netAmount)}</span>
-                                </span>
-                                <span
-                                  className={
-                                    order.status === "paid_out"
-                                      ? "text-emerald-600 font-medium whitespace-nowrap"
-                                      : "text-amber-600 font-medium whitespace-nowrap"
-                                  }
-                                >
-                                  {order.status === "paid_out" ? "repassado" : "aguardando repasse"}
-                                </span>
-                              </li>
+                              <OrderRow
+                                key={order.id}
+                                order={order}
+                                onUpdated={(updated) =>
+                                  setOrders((prev) => ({
+                                    ...prev,
+                                    [conn.id]: prev[conn.id].map((o) => (o.id === updated.id ? updated : o)),
+                                  }))
+                                }
+                              />
                             ))}
                           </ul>
                         )}
@@ -383,6 +377,132 @@ function FinancialStat({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-slate-500">{label}</p>
       <p className="text-lg font-semibold text-slate-900 mt-1">{value}</p>
     </div>
+  );
+}
+
+const CARRIERS = ["USPS", "Correios", "DHL", "FedEx", "Outro"];
+
+function OrderRow({ order, onUpdated }: { order: Order; onUpdated: (order: Order) => void }) {
+  const [showDetails, setShowDetails] = useState(false);
+  const [carrier, setCarrier] = useState(order.trackingCarrier ?? CARRIERS[0]);
+  const [trackingNumber, setTrackingNumber] = useState(order.trackingNumber ?? "");
+  const [sourceCost, setSourceCost] = useState(order.sourcePurchaseCostBrl?.toString() ?? "");
+  const [sourceTax, setSourceTax] = useState(order.sourceTaxEstimateBrl?.toString() ?? "");
+  const [saving, setSaving] = useState<"tracking" | "purchase" | null>(null);
+
+  async function saveTracking() {
+    if (!trackingNumber.trim()) return;
+    setSaving("tracking");
+    try {
+      onUpdated(await api.updateOrderTracking(order.id, carrier, trackingNumber.trim()));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function savePurchase() {
+    if (sourceCost.trim() === "") return;
+    setSaving("purchase");
+    try {
+      onUpdated(await api.recordDropshipPurchase(order.id, Number(sourceCost), Number(sourceTax) || 0));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  return (
+    <li className="text-xs text-slate-500 border-b border-slate-100 last:border-0 pb-2">
+      <div className="flex justify-between gap-3">
+        <span>
+          <span className="text-slate-400">{new Date(order.soldAt).toLocaleString("pt-BR")}</span> — bruto{" "}
+          {formatBRL(order.grossAmount)}, taxa {formatBRL(order.feeAmount)}, líquido{" "}
+          <span className="text-slate-700 font-medium">{formatBRL(order.netAmount)}</span>
+          {order.fulfillmentMode === "dropship" && (
+            <span className="ml-1 bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">dropshipping</span>
+          )}
+        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={order.status === "paid_out" ? "text-emerald-600 font-medium" : "text-amber-600 font-medium"}>
+            {order.status === "paid_out" ? "repassado" : "aguardando repasse"}
+          </span>
+          <button onClick={() => setShowDetails((v) => !v)} className="text-indigo-600 hover:underline">
+            {showDetails ? "ocultar" : order.fulfillmentMode === "dropship" ? "compra/rastreio" : "rastreio"}
+          </button>
+        </div>
+      </div>
+
+      {showDetails && (
+        <div className="mt-2 bg-slate-50 border border-slate-200 rounded-md p-2 flex flex-col gap-2">
+          {order.fulfillmentMode === "dropship" && (
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex flex-col gap-0.5">
+                <span>Custo pago na fonte (R$)</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="input !text-xs !py-1 w-28"
+                  value={sourceCost}
+                  onChange={(e) => setSourceCost(e.target.value)}
+                />
+              </label>
+              <label className="flex flex-col gap-0.5">
+                <span>Imposto estimado (R$)</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="input !text-xs !py-1 w-28"
+                  value={sourceTax}
+                  onChange={(e) => setSourceTax(e.target.value)}
+                />
+              </label>
+              <button
+                onClick={savePurchase}
+                disabled={saving === "purchase"}
+                className="px-2 py-1 rounded-md bg-emerald-600 text-white disabled:opacity-50"
+              >
+                {saving === "purchase" ? "Salvando..." : "Salvar compra"}
+              </button>
+              {order.dropshipProfitBrl !== undefined && (
+                <span className="font-medium text-slate-700">Lucro: {formatBRL(order.dropshipProfitBrl)}</span>
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-0.5">
+              <span>Transportadora</span>
+              <select className="input !text-xs !py-1 w-28" value={carrier} onChange={(e) => setCarrier(e.target.value)}>
+                {CARRIERS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-0.5">
+              <span>Código de rastreio</span>
+              <input
+                className="input !text-xs !py-1 w-40"
+                value={trackingNumber}
+                onChange={(e) => setTrackingNumber(e.target.value)}
+              />
+            </label>
+            <button
+              onClick={saveTracking}
+              disabled={saving === "tracking"}
+              className="px-2 py-1 rounded-md bg-indigo-600 text-white disabled:opacity-50"
+            >
+              {saving === "tracking" ? "Salvando..." : "Salvar rastreio"}
+            </button>
+            {order.trackingUrl && (
+              <a href={order.trackingUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">
+                Rastrear pacote →
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+    </li>
   );
 }
 

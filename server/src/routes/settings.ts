@@ -21,6 +21,8 @@ settingsRouter.put("/", async (req, res) => {
     optimizationCooldownHours: body.optimizationCooldownHours !== undefined ? Number(body.optimizationCooldownHours) : store.settings.optimizationCooldownHours,
     usdToBrlRate: body.usdToBrlRate !== undefined ? Number(body.usdToBrlRate) : store.settings.usdToBrlRate,
     importTaxPercent: body.importTaxPercent !== undefined ? Number(body.importTaxPercent) : store.settings.importTaxPercent,
+    remessaIcmsPercent:
+      body.remessaIcmsPercent !== undefined ? Number(body.remessaIcmsPercent) : store.settings.remessaIcmsPercent,
   };
   store.settings = updated;
   await db.save();

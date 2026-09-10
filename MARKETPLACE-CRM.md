@@ -7,6 +7,7 @@ CRM para conectar seus produtos aos melhores marketplaces. O sistema:
 3. **Reotimiza continuamente** título, descrição e palavras-chave (SEO) de cada anúncio conectado, em ciclos automáticos, para evitar estagnação no ranking do marketplace.
 4. **Acompanha o financeiro** de cada produto/marketplace: vendas, taxa cobrada e repasse esperado (hoje simulado, pronto para ligar às APIs reais de pedidos de cada marketplace).
 5. **Pesquisa fornecedores de atacado automaticamente** (foco inicial: perfumes árabes e perfumes importados originais) via IA, ranqueando sempre pelo **menor custo total de importação** (produto + frete + impostos de referência) — não só o preço do produto no exterior —, com MOQ, prazo, margem estimada e uma calculadora de câmbio.
+6. **Funciona nos dois modelos**: compre no atacado e mantenha estoque (fluxo acima), ou faça **dropshipping** — compre unidade a unidade só depois que a venda acontece, sem estoque — para os casos de ticket alto e giro baixo que realmente compensam (tipicamente grifes originais).
 
 ## Estrutura
 
@@ -113,6 +114,17 @@ Tela **Fornecedores** (`client/src/pages/Sourcing.tsx`) para pesquisar canais de
 
 Para extrapolar para outros nichos além de perfumes: adicione mais entradas a `supplierLeads.ts` (ou troque o módulo por uma integração real com uma API de sourcing B2B) — o resto do fluxo não muda.
 
+## Estoque x Dropshipping
+
+Cada produto tem um `fulfillmentMode`: `"stock"` (compra no atacado, guarda estoque, você mesmo despacha — o fluxo de Sourcing acima) ou `"dropship"` (sem estoque: cada pedido é comprado individualmente só depois que a venda acontece, e enviado direto ao cliente final).
+
+- **Sugestão automática**: `sourcingService.ts` calcula um `suggestedFulfillment` ("estoque", "dropshipping" ou "ambos") por opção de fornecedor, a partir do MOQ e do nicho — MOQ baixo (≤25) + grife original tende a "dropshipping" (menos capital preso, evita comprar 12-24 unidades de um item caro e sensível a autenticidade); MOQ alto favorece "estoque". Ao clicar em "Usar esta opção para criar produto", o modo já vem pré-selecionado de acordo.
+- **Regime tributário diferente**: import comercial em volume (estoque) usa o regime formal (CNPJ + Radar Siscomex + Anvisa + II/IPI/PIS-COFINS/ICMS sobre valor aduaneiro). Dropshipping — uma remessa por vez, endereçada direto ao cliente final — cai no regime simplificado de **remessa individual** (o mesmo do consumidor comum): II isento até US$ 50 via plataforma "Remessa Conforme", ICMS sempre incide. `server/src/services/dropshipService.ts` modela esse segundo regime (`estimateDropshipOrder`), separado do `importTaxPercent` usado para estoque — ver `settings.remessaIcmsPercent`, editável em Configurações.
+- **Calculadora de dropshipping** (tela Fornecedores): você informa o preço de varejo (ver abaixo) e o frete estimado, marca se a compra foi feita por uma plataforma "Remessa Conforme", e o sistema estima o custo total dessa compra pontual (produto + frete + II + ICMS). É uma referência — confirme com um simulador como o [tributado.net](https://m.tributado.net) antes de fechar.
+- **Achar o menor preço de varejo**: este app não tem integração automática com ferramentas de cupom/cashback — a [Honey](https://www.joinhoney.com) (extensão de navegador da PayPal) não expõe uma API pública para consulta programática de preços, então isso continua manual: você mesmo confere o menor preço com cupom antes de registrar a compra no pedido.
+- **Rastreio de pedidos**: cada `Order` pode guardar `trackingCarrier`/`trackingNumber`. Para a transportadora `"USPS"`, o sistema já gera o link público de rastreio (`https://tools.usps.com/go/TrackConfirmAction?tLabels=<código>`, o mesmo formato do [rastreador oficial](https://tools.usps.com/tracking/)) — sem precisar de API key. Isso é só o link da página pública; consultar o status via API exige credenciais nas novas **USPS APIs** (o antigo Web Tools API foi desativado em 25/01/2026) — troque `ordersService.getTrackingUrl`/adicione um adapter de tracking quando for automatizar isso.
+- **Lucro por pedido**: ao registrar o custo pago na fonte + imposto estimado de um pedido dropship (`PUT /api/orders/:id/dropship-purchase`), o sistema calcula `dropshipProfitBrl = líquido do marketplace − custo na fonte − imposto`, visível na tela do produto.
+
 ## Otimização automática (SEO sempre em evolução)
 
 Um job (`server/src/services/schedulerService.ts`, via `node-cron`) roda periodicamente (configurável em **Configurações**) e, para cada anúncio conectado cujo "cooldown" já passou, gera uma nova variação de título/descrição/palavras-chave via IA e a publica no adapter do marketplace, registrando tudo no histórico do produto. Isso simula a manutenção contínua de SEO para não deixar o anúncio "estagnar" no ranking.
@@ -141,3 +153,6 @@ Também é possível disparar manualmente:
 | GET | `/api/financial-summary` | resumo financeiro global |
 | GET | `/api/sourcing/fx-methods` | métodos de câmbio de referência |
 | POST | `/api/sourcing/research` | pesquisar fornecedores por nicho/consulta |
+| POST | `/api/sourcing/dropship-estimate` | estimar custo total de uma compra dropship pontual |
+| PUT | `/api/orders/:id/tracking` | salvar transportadora/código de rastreio de um pedido |
+| PUT | `/api/orders/:id/dropship-purchase` | registrar custo/imposto pago e calcular lucro de um pedido dropship |

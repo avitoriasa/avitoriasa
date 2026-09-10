@@ -130,6 +130,13 @@ export class HeuristicProvider implements AIProvider {
         );
       }
       if (option.leadId === cheapest.leadId) parts.push("menor custo total de importação entre as opções encontradas");
+      parts.push(
+        option.suggestedFulfillment === "dropshipping"
+          ? "MOQ baixo e ticket alto: melhor comprar por pedido (dropshipping) do que manter estoque"
+          : option.suggestedFulfillment === "ambos"
+            ? "viável tanto manter estoque quanto comprar por pedido (dropshipping)"
+            : "MOQ compensa manter estoque (compra única, revenda ao longo do tempo)"
+      );
       reasoningByLeadId[option.leadId] = `${option.name}: ${parts.join(", ")}.`;
     }
 

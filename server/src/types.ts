@@ -1,3 +1,13 @@
+/**
+ * "stock": você compra no atacado, guarda estoque e despacha as vendas você
+ * mesmo (fluxo de Sourcing + costBasis já existente).
+ * "dropship": sem estoque — cada pedido é comprado individualmente (ex.: no
+ * varejo dos EUA) só depois que a venda acontece, e enviado direto ao
+ * cliente final. Normalmente faz sentido para itens de ticket alto/baixo
+ * giro (ex.: grifes originais) onde manter estoque não compensa.
+ */
+export type FulfillmentMode = "stock" | "dropship";
+
 export interface Product {
   id: string;
   name: string;
@@ -11,6 +21,7 @@ export interface Product {
   basePrice: number;
   /** Custo de aquisição (landed cost) por unidade, se o produto veio de uma opção de fornecimento. Opcional. */
   costBasis?: number;
+  fulfillmentMode: FulfillmentMode;
   sku: string;
   keywords: string[];
   createdAt: string;
@@ -131,6 +142,17 @@ export interface Order {
   status: OrderStatus;
   soldAt: string;
   payoutExpectedAt: string;
+  fulfillmentMode: FulfillmentMode;
+  /** Dropship only: o que você pagou na fonte de varejo (ex.: preço com cupom via Honey) para atender esse pedido específico. */
+  sourcePurchaseCostBrl?: number;
+  /** Dropship only: estimativa de imposto de remessa (ICMS + II quando aplicável) sobre essa compra pontual. */
+  sourceTaxEstimateBrl?: number;
+  /** Dropship only: lucro estimado = netAmount - sourcePurchaseCostBrl - sourceTaxEstimateBrl. */
+  dropshipProfitBrl?: number;
+  trackingCarrier?: string;
+  trackingNumber?: string;
+  /** Link público de rastreio, quando o transportador suporta (ex.: USPS). */
+  trackingUrl?: string;
 }
 
 export interface FinancialSummary {
@@ -160,6 +182,12 @@ export interface AppSettings {
    * confirme com um despachante aduaneiro/contador antes de importar.
    */
   importTaxPercent: number;
+  /**
+   * ICMS de referência para compras individuais via regime de remessa (usado
+   * na calculadora de dropshipping, não no import comercial em volume).
+   * Varia por estado — confirme antes de usar em produção real.
+   */
+  remessaIcmsPercent: number;
 }
 
 export type SupplierNiche = "perfumes_arabes" | "perfumes_importados_originais" | "geral_b2b";
@@ -186,6 +214,9 @@ export interface SupplierLead {
   productExamples: string[];
 }
 
+/** Whether a lead's typical MOQ/ticket make it better suited to holding stock, per-order dropshipping, or either. */
+export type FulfillmentSuggestion = "estoque" | "dropshipping" | "ambos";
+
 /** A SupplierLead enriched with BRL conversion, landed cost, margin estimate and AI reasoning. */
 export interface SourcingOption {
   leadId: string;
@@ -207,6 +238,7 @@ export interface SourcingOption {
   riskNotes: string;
   productExamples: string[];
   estimatedMarginPercent: number | null;
+  suggestedFulfillment: FulfillmentSuggestion;
   reasoning: string;
 }
 
@@ -225,4 +257,23 @@ export interface FxMethod {
   name: string;
   typicalSpreadPercent: number;
   notes: string;
+}
+
+/**
+ * Estimate for fulfilling a single dropship order: buy at retail abroad
+ * (e.g. a US site, price-checked manually via a coupon/price tool) and ship
+ * straight to the end customer, taxed under Brazil's individual/remessa
+ * regime — a different, simpler regime than the bulk commercial import used
+ * for stock. See sourcingService.estimateDropshipOrder for the formula.
+ */
+export interface DropshipEstimate {
+  sourcePriceUsd: number;
+  sourcePriceBrl: number;
+  shippingBrl: number;
+  /** Whether this parcel qualifies for the II-exempt compliant remessa program (≤ US$50, compliant platform). */
+  iiExempt: boolean;
+  iiBrl: number;
+  icmsPercent: number;
+  icmsBrl: number;
+  totalLandedBrl: number;
 }

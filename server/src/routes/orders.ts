@@ -1,6 +1,11 @@
 import { Router } from "express";
 import { db } from "../db.js";
-import { collectOrdersForConnection, summarizeOrders } from "../services/ordersService.js";
+import {
+  collectOrdersForConnection,
+  recordDropshipPurchase,
+  summarizeOrders,
+  updateOrderTracking,
+} from "../services/ordersService.js";
 
 export const ordersRouter = Router();
 
@@ -37,4 +42,34 @@ ordersRouter.get("/products/:id/financial-summary", async (req, res) => {
 ordersRouter.get("/financial-summary", async (_req, res) => {
   const store = await db.read();
   res.json(summarizeOrders(store.orders));
+});
+
+ordersRouter.put("/orders/:id/tracking", async (req, res) => {
+  const { carrier, trackingNumber } = req.body ?? {};
+  if (!carrier || !trackingNumber) {
+    return res.status(400).json({ error: "carrier e trackingNumber são obrigatórios" });
+  }
+  try {
+    const order = await updateOrderTracking(req.params.id, carrier, trackingNumber);
+    res.json(order);
+  } catch (err) {
+    res.status(404).json({ error: (err as Error).message });
+  }
+});
+
+ordersRouter.put("/orders/:id/dropship-purchase", async (req, res) => {
+  const { sourcePurchaseCostBrl, sourceTaxEstimateBrl } = req.body ?? {};
+  if (sourcePurchaseCostBrl === undefined) {
+    return res.status(400).json({ error: "sourcePurchaseCostBrl é obrigatório" });
+  }
+  try {
+    const order = await recordDropshipPurchase(
+      req.params.id,
+      Number(sourcePurchaseCostBrl),
+      Number(sourceTaxEstimateBrl ?? 0)
+    );
+    res.json(order);
+  } catch (err) {
+    res.status(404).json({ error: (err as Error).message });
+  }
 });

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
-import type { FxMethod, SourcingOption, SourcingResearchResult } from "../types/domain";
+import type { DropshipEstimate, FxMethod, SourcingOption, SourcingResearchResult } from "../types/domain";
 
 function formatBRL(value: number): string {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -19,6 +19,12 @@ const NICHE_LABEL: Record<string, string> = {
   geral_b2b: "Plataforma B2B geral",
 };
 
+const FULFILLMENT_LABEL: Record<string, string> = {
+  estoque: "Melhor com estoque",
+  dropshipping: "Bom para dropshipping",
+  ambos: "Estoque ou dropshipping",
+};
+
 export function Sourcing() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("perfumes");
@@ -31,12 +37,29 @@ export function Sourcing() {
   const [fxUsdAmount, setFxUsdAmount] = useState("500");
   const [fxMethodId, setFxMethodId] = useState<string>("");
 
+  const [dropshipPriceUsd, setDropshipPriceUsd] = useState("40");
+  const [dropshipShippingBrl, setDropshipShippingBrl] = useState("30");
+  const [dropshipCompliant, setDropshipCompliant] = useState(true);
+  const [dropshipEstimate, setDropshipEstimate] = useState<DropshipEstimate | null>(null);
+  const [dropshipLoading, setDropshipLoading] = useState(false);
+
   useEffect(() => {
     api.listFxMethods().then((methods) => {
       setFxMethods(methods);
       if (methods.length) setFxMethodId(methods[0].id);
     });
   }, []);
+
+  async function runDropshipEstimate() {
+    setDropshipLoading(true);
+    try {
+      setDropshipEstimate(
+        await api.estimateDropship(Number(dropshipPriceUsd) || 0, Number(dropshipShippingBrl) || 0, dropshipCompliant)
+      );
+    } finally {
+      setDropshipLoading(false);
+    }
+  }
 
   async function runSearch(q: string) {
     setQuery(q);
@@ -65,6 +88,7 @@ export function Sourcing() {
           name: option.productExamples[0] ? `${option.name} — ${option.productExamples[0]}` : option.name,
           category: "perfumes",
           costBasis: Math.round(avgLandedCostBrl * 100) / 100,
+          fulfillmentMode: option.suggestedFulfillment === "dropshipping" ? "dropship" : "stock",
           keywords: [...option.productExamples, "perfume", "importado"],
           description: `Fornecedor: ${option.name} (${option.channel}, ${option.country}). ${option.riskNotes}`,
         },
@@ -169,6 +193,15 @@ export function Sourcing() {
                       <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
                         {NICHE_LABEL[option.niche] ?? option.niche}
                       </span>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          option.suggestedFulfillment === "dropshipping"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-sky-100 text-sky-700"
+                        }`}
+                      >
+                        {FULFILLMENT_LABEL[option.suggestedFulfillment]}
+                      </span>
                     </div>
                     <h3 className="font-medium text-slate-900 mt-1">{option.name}</h3>
                     <p className="text-xs text-slate-500">
@@ -262,6 +295,82 @@ export function Sourcing() {
       </section>
 
       <section className="bg-white rounded-lg border border-slate-200 p-5">
+        <h3 className="font-medium text-slate-900 mb-1">Calculadora de dropshipping (compra por pedido)</h3>
+        <p className="text-xs text-slate-500 mb-3">
+          Para itens marcados "Bom para dropshipping" (MOQ baixo, ticket alto — normalmente grifes originais):
+          compare o preço no varejo (ex.: um site dos EUA — use uma ferramenta de cupom/preço como a{" "}
+          <a href="https://www.joinhoney.com" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">
+            Honey
+          </a>{" "}
+          para achar o menor preço antes de comprar; este app não consulta a Honey automaticamente, é manual) e
+          estime o imposto de uma remessa individual — regime diferente do import comercial em volume.
+        </p>
+        <div className="flex flex-wrap gap-3 items-end">
+          <label className="flex flex-col gap-1 text-sm text-slate-700 w-40">
+            <span>Preço no varejo (US$)</span>
+            <input
+              type="number"
+              className="input"
+              value={dropshipPriceUsd}
+              onChange={(e) => setDropshipPriceUsd(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-slate-700 w-40">
+            <span>Frete estimado (R$)</span>
+            <input
+              type="number"
+              className="input"
+              value={dropshipShippingBrl}
+              onChange={(e) => setDropshipShippingBrl(e.target.value)}
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" checked={dropshipCompliant} onChange={(e) => setDropshipCompliant(e.target.checked)} />
+            Comprado via plataforma "Remessa Conforme"
+          </label>
+          <button
+            onClick={runDropshipEstimate}
+            disabled={dropshipLoading}
+            className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {dropshipLoading ? "Calculando..." : "Calcular"}
+          </button>
+        </div>
+        {dropshipEstimate && (
+          <div className="mt-3 bg-slate-50 border border-slate-200 rounded-md p-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-600">
+            <span>Produto: {formatBRL(dropshipEstimate.sourcePriceBrl)}</span>
+            <span>Frete: {formatBRL(dropshipEstimate.shippingBrl)}</span>
+            <span>
+              Imposto de importação (II): {dropshipEstimate.iiExempt ? "isento (≤ US$50, Remessa Conforme)" : formatBRL(dropshipEstimate.iiBrl)}
+            </span>
+            <span>
+              ICMS ({dropshipEstimate.icmsPercent}%): {formatBRL(dropshipEstimate.icmsBrl)}
+            </span>
+            <span className="font-medium text-slate-800">
+              Custo total dessa compra: {formatBRL(dropshipEstimate.totalLandedBrl)}
+            </span>
+          </div>
+        )}
+        <p className="text-xs text-slate-400 mt-2">
+          Estimativa de referência (não oficial) — confirme com um simulador como o{" "}
+          <a href="https://m.tributado.net" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">
+            tributado.net
+          </a>{" "}
+          antes de fechar a compra. Depois de comprado, registre o custo real e o código de rastreio no pedido (tela
+          do produto) — para transportadora USPS, o link de rastreio usa o{" "}
+          <a
+            href="https://tools.usps.com/tracking/"
+            target="_blank"
+            rel="noreferrer"
+            className="text-indigo-600 hover:underline"
+          >
+            rastreador oficial dos Correios americanos
+          </a>
+          .
+        </p>
+      </section>
+
+      <section className="bg-white rounded-lg border border-slate-200 p-5">
         <h3 className="font-medium text-slate-900 mb-1">Checklist para importar e revender perfumes no Brasil</h3>
         <p className="text-xs text-slate-500 mb-3">
           Conteúdo informativo, não é aconselhamento jurídico/tributário — as regras mudam com frequência; confirme
@@ -283,7 +392,9 @@ export function Sourcing() {
           </li>
           <li>
             Regras simplificadas de "remessa conforme" (para compras de pessoa física) não valem para importação
-            comercial em volume — isso exige despacho de importação formal via CNPJ.
+            comercial em volume (estoque) — isso exige despacho de importação formal via CNPJ. Já para
+            <strong> dropshipping</strong> (compra unidade a unidade, enviada direto ao cliente final), o regime que se
+            aplica é justamente esse — de remessa individual — não o de import comercial.
           </li>
           <li>Para grifes originais: confirme autenticidade e rastreabilidade do lote — distribuição seletiva torna o atacado "oficial" praticamente inacessível para pequenos revendedores.</li>
         </ul>

@@ -147,6 +147,22 @@ export function Settings() {
           automaticamente os fornecedores na tela de Fornecedores, priorizando sempre o menor custo total.
         </p>
 
+        <label className="flex flex-col gap-1 text-sm text-slate-700 max-w-[260px]">
+          <span>ICMS de referência p/ dropshipping (remessa individual)</span>
+          <input
+            type="number"
+            step="1"
+            className="input"
+            value={settings.remessaIcmsPercent}
+            onChange={(e) => setSettings({ ...settings, remessaIcmsPercent: Number(e.target.value) })}
+          />
+          <span className="text-xs text-slate-400">
+            Regime diferente do import comercial acima — usado na calculadora de dropshipping (tela de
+            Fornecedores) para estimar o imposto de uma compra individual enviada direto ao cliente. Varia por
+            estado; confira em simuladores como o tributado.net.
+          </span>
+        </label>
+
         {message && <p className="text-sm text-indigo-700">{message}</p>}
 
         <div>

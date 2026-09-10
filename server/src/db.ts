@@ -35,6 +35,8 @@ const defaultSettings: AppSettings = {
   usdToBrlRate: Number(process.env.USD_TO_BRL_RATE) || 5.3,
   // Estimativa grosseira (II+IPI+PIS/COFINS+ICMS sobre custo+frete) — confirme com despachante/contador.
   importTaxPercent: Number(process.env.IMPORT_TAX_PERCENT) || 60,
+  // ICMS de referência sobre remessas individuais (regime distinto da importação comercial em volume).
+  remessaIcmsPercent: Number(process.env.REMESSA_ICMS_PERCENT) || 17,
 };
 
 function emptySchema(): Schema {

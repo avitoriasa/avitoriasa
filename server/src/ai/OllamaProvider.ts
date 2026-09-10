@@ -97,10 +97,13 @@ Responda APENAS em JSON no formato:
 Os dados abaixo são opções de fornecimento JÁ PESQUISADAS e JÁ ORDENADAS pelo menor custo total de
 importação (landedCostBrlMin/Max = produto + frete + impostos de referência) — essa é a prioridade
 automática da busca. Você NÃO deve inventar fornecedores, preços ou dados novos, nem reordenar as opções.
-Sua tarefa é apenas: (1) escrever uma frase de análise estratégica objetiva para cada opção, considerando
-o custo total de importação (não só o preço do produto no exterior) e o risco de autenticidade (especialmente
-para grifes originais importadas via mercado paralelo), e (2) um resumo geral de estratégia de compra para
-a busca "${input.query}", destacando a opção de menor custo total.
+Cada opção já traz um campo suggestedFulfillment ("estoque", "dropshipping" ou "ambos"), calculado a partir do
+MOQ e do nicho — "dropshipping" significa comprar unidade a unidade só depois que a venda acontece (sem manter
+estoque), indicado para MOQ baixo e ticket alto. Sua tarefa é apenas: (1) escrever uma frase de análise
+estratégica objetiva para cada opção, considerando o custo total de importação (não só o preço do produto no
+exterior), o risco de autenticidade (especialmente para grifes originais importadas via mercado paralelo) e o
+suggestedFulfillment já calculado, e (2) um resumo geral de estratégia de compra para a busca "${input.query}",
+destacando a opção de menor custo total.
 
 Opções (já ordenadas por landedCostBrlMin crescente): ${JSON.stringify(input.options, null, 2)}
 

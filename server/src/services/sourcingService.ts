@@ -1,7 +1,20 @@
 import { AIProvider } from "../ai/index.js";
 import { FX_METHODS } from "../data/fxMethods.js";
 import { SUPPLIER_LEADS } from "../data/supplierLeads.js";
-import { FxMethod, SourcingOption, SourcingResearchResult, SupplierLead, SupplierNiche } from "../types.js";
+import { FulfillmentSuggestion, FxMethod, SourcingOption, SourcingResearchResult, SupplierLead, SupplierNiche } from "../types.js";
+
+/**
+ * Heuristic: low-MOQ, higher-ticket channels (typically parallel-import
+ * originais) are a better fit for per-order dropshipping than for holding
+ * stock — less capital at risk, and you don't need to move 50-100 units of
+ * an expensive, authenticity-sensitive item to justify buying it. High-MOQ
+ * own-brand wholesale (the arabic perfume houses, general B2B) fits the
+ * traditional buy-stock-and-resell model instead.
+ */
+function suggestFulfillment(lead: SupplierLead): FulfillmentSuggestion {
+  if (lead.moq > 25) return "estoque";
+  return lead.niche === "perfumes_importados_originais" ? "dropshipping" : "ambos";
+}
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -92,6 +105,7 @@ export async function researchSuppliers(
       riskNotes: lead.riskNotes,
       productExamples: lead.productExamples,
       estimatedMarginPercent,
+      suggestedFulfillment: suggestFulfillment(lead),
     };
   });
 

@@ -1,3 +1,10 @@
+/**
+ * "stock": compra no atacado, guarda estoque e despacha as vendas.
+ * "dropship": sem estoque — cada pedido é comprado individualmente (ex.: no
+ * varejo dos EUA) só depois da venda, e enviado direto ao cliente final.
+ */
+export type FulfillmentMode = "stock" | "dropship";
+
 export interface Product {
   id: string;
   name: string;
@@ -7,6 +14,7 @@ export interface Product {
   basePrice: number;
   /** Custo de aquisição (landed cost) por unidade, se o produto veio de uma opção de fornecimento. */
   costBasis?: number;
+  fulfillmentMode: FulfillmentMode;
   sku: string;
   keywords: string[];
   createdAt: string;
@@ -104,6 +112,13 @@ export interface Order {
   status: OrderStatus;
   soldAt: string;
   payoutExpectedAt: string;
+  fulfillmentMode: FulfillmentMode;
+  sourcePurchaseCostBrl?: number;
+  sourceTaxEstimateBrl?: number;
+  dropshipProfitBrl?: number;
+  trackingCarrier?: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
 }
 
 export interface FinancialSummary {
@@ -123,9 +138,11 @@ export interface AppSettings {
   optimizationCooldownHours: number;
   usdToBrlRate: number;
   importTaxPercent: number;
+  remessaIcmsPercent: number;
 }
 
 export type SupplierNiche = "perfumes_arabes" | "perfumes_importados_originais" | "geral_b2b";
+export type FulfillmentSuggestion = "estoque" | "dropshipping" | "ambos";
 
 export interface SourcingOption {
   leadId: string;
@@ -146,6 +163,7 @@ export interface SourcingOption {
   riskNotes: string;
   productExamples: string[];
   estimatedMarginPercent: number | null;
+  suggestedFulfillment: FulfillmentSuggestion;
   reasoning: string;
 }
 
@@ -163,4 +181,15 @@ export interface FxMethod {
   name: string;
   typicalSpreadPercent: number;
   notes: string;
+}
+
+export interface DropshipEstimate {
+  sourcePriceUsd: number;
+  sourcePriceBrl: number;
+  shippingBrl: number;
+  iiExempt: boolean;
+  iiBrl: number;
+  icmsPercent: number;
+  icmsBrl: number;
+  totalLandedBrl: number;
 }

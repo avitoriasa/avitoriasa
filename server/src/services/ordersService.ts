@@ -10,6 +10,20 @@ function round2(n: number): number {
 }
 
 /**
+ * Public tracking page link, when the carrier supports a URL-based lookup.
+ * Only USPS is wired today (https://tools.usps.com/tracking/) — add more
+ * carriers here as needed. Returns undefined for unsupported carriers so
+ * the UI can fall back to showing the plain tracking number.
+ */
+export function getTrackingUrl(carrier: string | undefined, trackingNumber: string | undefined): string | undefined {
+  if (!carrier || !trackingNumber) return undefined;
+  if (carrier.trim().toLowerCase() === "usps") {
+    return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(trackingNumber)}`;
+  }
+  return undefined;
+}
+
+/**
  * Polls the marketplace adapter for new sales on a connection and appends
  * them as Orders with the fee/net split already computed. Replace
  * MarketplaceAdapter.fetchOrders with a real "list orders" call and this
@@ -27,6 +41,7 @@ export async function collectOrdersForConnection(
   if (fetched.length === 0) return [];
 
   const store = await db.read();
+  const product = store.products.find((p) => p.id === connection.productId);
   const newOrders: Order[] = fetched.map((f) => {
     const feeAmount = round2(f.grossAmount * (marketplace.feePercent / 100));
     return {
@@ -41,6 +56,7 @@ export async function collectOrdersForConnection(
       status: "pending_payout",
       soldAt: f.soldAt,
       payoutExpectedAt: new Date(Date.now() + PAYOUT_DELAY_DAYS * 24 * 3_600_000).toISOString(),
+      fulfillmentMode: product?.fulfillmentMode ?? "stock",
     };
   });
 
@@ -63,6 +79,40 @@ export async function maturePendingPayouts(): Promise<number> {
   });
   if (matured > 0) await db.save();
   return matured;
+}
+
+/**
+ * Records what you actually paid a retail source (e.g. a US site,
+ * price-checked manually with a coupon/cashback tool) to fulfill one
+ * dropship order, plus the estimated remessa-regime tax for that single
+ * parcel — see dropshipService.estimateDropshipOrder for that estimate.
+ */
+export async function recordDropshipPurchase(
+  orderId: string,
+  sourcePurchaseCostBrl: number,
+  sourceTaxEstimateBrl: number
+): Promise<Order> {
+  const store = await db.read();
+  const order = store.orders.find((o) => o.id === orderId);
+  if (!order) throw new Error(`Pedido ${orderId} não encontrado`);
+
+  order.sourcePurchaseCostBrl = round2(sourcePurchaseCostBrl);
+  order.sourceTaxEstimateBrl = round2(sourceTaxEstimateBrl);
+  order.dropshipProfitBrl = round2(order.netAmount - sourcePurchaseCostBrl - sourceTaxEstimateBrl);
+  await db.save();
+  return order;
+}
+
+export async function updateOrderTracking(orderId: string, carrier: string, trackingNumber: string): Promise<Order> {
+  const store = await db.read();
+  const order = store.orders.find((o) => o.id === orderId);
+  if (!order) throw new Error(`Pedido ${orderId} não encontrado`);
+
+  order.trackingCarrier = carrier;
+  order.trackingNumber = trackingNumber;
+  order.trackingUrl = getTrackingUrl(carrier, trackingNumber);
+  await db.save();
+  return order;
 }
 
 export function summarizeOrders(orders: Order[]): FinancialSummary {
