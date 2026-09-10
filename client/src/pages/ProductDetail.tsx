@@ -835,9 +835,9 @@ function TrendsPanel({
       {!result ? (
         <p className="text-sm text-slate-500">
           Roda um agente de IA sobre um painel de interesse de busca (Google Trends, Brasil) relacionado a este
-          produto: sugere palavras-chave de SEO com maior potencial e um rascunho de anúncio pago, com orçamento de
-          referência. Sem chave de API configurada (SERPAPI_KEY), usa um dataset curado de referência em vez de
-          dados ao vivo.
+          produto: sugere palavras-chave de SEO com maior potencial, uma recomendação de onde priorizar por região e
+          um rascunho de anúncio pago, com orçamento de referência. Busca dados reais direto do Google Trends, sem
+          custo — se o Google limitar a requisição, cai automaticamente para um dataset curado de referência.
         </p>
       ) : (
         <div className="flex flex-col gap-4">
