@@ -6,6 +6,8 @@ import {
   ExplainRecommendationOutput,
   GenerateListingContentInput,
   GenerateListingContentOutput,
+  ResearchSuppliersInput,
+  ResearchSuppliersOutput,
 } from "./AIProvider.js";
 import { HeuristicProvider } from "./HeuristicProvider.js";
 import { OllamaProvider } from "./OllamaProvider.js";
@@ -46,6 +48,18 @@ class ResilientAIProvider implements AIProvider {
       console.warn(`[ai] Provedor "${this.primary.name}" falhou (${(err as Error).message}); usando heurístico.`);
       this.name = `${heuristic.name} (fallback de ${this.primary.name})`;
       return heuristic.generateListingContent(input);
+    }
+  }
+
+  async researchSuppliers(input: ResearchSuppliersInput): Promise<ResearchSuppliersOutput> {
+    try {
+      const result = await this.primary.researchSuppliers(input);
+      this.name = this.primary.name;
+      return result;
+    } catch (err) {
+      console.warn(`[ai] Provedor "${this.primary.name}" falhou (${(err as Error).message}); usando heurístico.`);
+      this.name = `${heuristic.name} (fallback de ${this.primary.name})`;
+      return heuristic.researchSuppliers(input);
     }
   }
 }

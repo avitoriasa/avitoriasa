@@ -1,12 +1,22 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { Product } from "../types/domain";
 
-const emptyForm = { name: "", description: "", category: "", basePrice: "", sku: "", keywords: "" };
+const emptyForm = { name: "", description: "", category: "", basePrice: "", costBasis: "", sku: "", keywords: "" };
+
+export interface ProductPrefill {
+  name?: string;
+  category?: string;
+  costBasis?: number;
+  keywords?: string[];
+  description?: string;
+}
 
 export function Products() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [mode, setMode] = useState<"closed" | "create" | "edit">("closed");
@@ -22,6 +32,23 @@ export function Products() {
     load();
   }, []);
 
+  useEffect(() => {
+    const prefill = (location.state as { prefill?: ProductPrefill } | null)?.prefill;
+    if (!prefill) return;
+    setForm({
+      ...emptyForm,
+      name: prefill.name ?? "",
+      category: prefill.category ?? "",
+      description: prefill.description ?? "",
+      costBasis: prefill.costBasis !== undefined ? String(prefill.costBasis) : "",
+      keywords: (prefill.keywords ?? []).join(", "),
+    });
+    setEditingId(null);
+    setMode("create");
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
+
   function openCreateForm() {
     setForm(emptyForm);
     setEditingId(null);
@@ -34,6 +61,7 @@ export function Products() {
       description: p.description,
       category: p.category,
       basePrice: String(p.basePrice),
+      costBasis: p.costBasis !== undefined ? String(p.costBasis) : "",
       sku: p.sku,
       keywords: p.keywords.join(", "),
     });
@@ -50,6 +78,7 @@ export function Products() {
       description: form.description,
       category: form.category,
       basePrice: Number(form.basePrice),
+      costBasis: form.costBasis.trim() === "" ? null : Number(form.costBasis),
       sku: form.sku,
       keywords: form.keywords
         .split(",")
@@ -134,6 +163,23 @@ export function Products() {
               </span>
             )}
           </Field>
+          <Field label="Custo de aquisição (R$, opcional)">
+            <input
+              type="number"
+              step="0.01"
+              className="input"
+              value={form.costBasis}
+              onChange={(e) => setForm({ ...form, costBasis: e.target.value })}
+              placeholder="quanto você pagou por unidade (ver Fornecedores)"
+            />
+            {form.basePrice && form.costBasis && (
+              <span className="text-xs text-slate-400">
+                Margem estimada: R$ {(Number(form.basePrice) - Number(form.costBasis)).toFixed(2)} (
+                {(((Number(form.basePrice) - Number(form.costBasis)) / Number(form.basePrice)) * 100).toFixed(0)}% sobre
+                o líquido)
+              </span>
+            )}
+          </Field>
           <Field label="SKU" required>
             <input className="input" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} required />
           </Field>
@@ -187,6 +233,14 @@ export function Products() {
               </Link>
               <p className="text-sm text-slate-500">
                 {p.category} · SKU {p.sku} · líquido desejado R$ {p.basePrice.toFixed(2)}
+                {p.costBasis !== undefined && (
+                  <>
+                    {" "}
+                    · custo R$ {p.costBasis.toFixed(2)} · margem R${" "}
+                    {(p.basePrice - p.costBasis).toFixed(2)} (
+                    {(((p.basePrice - p.costBasis) / p.basePrice) * 100).toFixed(0)}%)
+                  </>
+                )}
               </p>
             </div>
             <div className="flex items-center gap-3">

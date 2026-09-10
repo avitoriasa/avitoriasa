@@ -9,6 +9,8 @@ export interface Product {
    * marketplace — ver PricingBreakdown / pricingService.ts).
    */
   basePrice: number;
+  /** Custo de aquisição (landed cost) por unidade, se o produto veio de uma opção de fornecimento. Opcional. */
+  costBasis?: number;
   sku: string;
   keywords: string[];
   createdAt: string;
@@ -143,4 +145,66 @@ export interface AppSettings {
   ollamaModel: string;
   optimizationIntervalHours: number;
   optimizationCooldownHours: number;
+  /**
+   * Cotação USD→BRL usada para converter custos de fornecedores estrangeiros.
+   * Não é uma cotação ao vivo — atualize manualmente em Configurações.
+   */
+  usdToBrlRate: number;
+}
+
+export type SupplierNiche = "perfumes_arabes" | "perfumes_importados_originais" | "geral_b2b";
+
+/**
+ * Curated reference entry for a sourcing channel — NOT live/scraped data.
+ * Maintained by hand in server/src/data/supplierLeads.ts. Costs are typical
+ * reference ranges; always confirm current price/MOQ/terms directly with
+ * the supplier before buying.
+ */
+export interface SupplierLead {
+  id: string;
+  name: string;
+  niche: SupplierNiche;
+  channel: string;
+  country: string;
+  unitCostUsdMin: number;
+  unitCostUsdMax: number;
+  moq: number;
+  leadTimeDays: number;
+  riskNotes: string;
+  productExamples: string[];
+}
+
+/** A SupplierLead enriched with BRL conversion, margin estimate and AI reasoning. */
+export interface SourcingOption {
+  leadId: string;
+  name: string;
+  niche: SupplierNiche;
+  channel: string;
+  country: string;
+  unitCostUsdMin: number;
+  unitCostUsdMax: number;
+  unitCostBrlMin: number;
+  unitCostBrlMax: number;
+  moq: number;
+  leadTimeDays: number;
+  riskNotes: string;
+  productExamples: string[];
+  estimatedMarginPercent: number | null;
+  reasoning: string;
+}
+
+export interface SourcingResearchResult {
+  query: string;
+  usdToBrlRate: number;
+  summary: string;
+  aiProvider: string;
+  options: SourcingOption[];
+}
+
+/** Reference-only comparison of ways to pay an overseas supplier. Spreads are typical figures, not live rates. */
+export interface FxMethod {
+  id: string;
+  name: string;
+  typicalSpreadPercent: number;
+  notes: string;
 }

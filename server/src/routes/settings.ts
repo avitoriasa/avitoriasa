@@ -19,6 +19,7 @@ settingsRouter.put("/", async (req, res) => {
     ollamaModel: body.ollamaModel ?? store.settings.ollamaModel,
     optimizationIntervalHours: body.optimizationIntervalHours !== undefined ? Number(body.optimizationIntervalHours) : store.settings.optimizationIntervalHours,
     optimizationCooldownHours: body.optimizationCooldownHours !== undefined ? Number(body.optimizationCooldownHours) : store.settings.optimizationCooldownHours,
+    usdToBrlRate: body.usdToBrlRate !== undefined ? Number(body.usdToBrlRate) : store.settings.usdToBrlRate,
   };
   store.settings = updated;
   await db.save();

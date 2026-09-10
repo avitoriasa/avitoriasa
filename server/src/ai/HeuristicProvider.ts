@@ -4,6 +4,8 @@ import {
   ExplainRecommendationOutput,
   GenerateListingContentInput,
   GenerateListingContentOutput,
+  ResearchSuppliersInput,
+  ResearchSuppliersOutput,
 } from "./AIProvider.js";
 
 const BENEFIT_ANGLES = [
@@ -107,5 +109,32 @@ export class HeuristicProvider implements AIProvider {
       keywords,
       changeReason: `Rotação automática de SEO (ciclo #${iteration}) para evitar estagnação no ranking: novo ângulo "${angle}" e chamada "${tag}".`,
     };
+  }
+
+  async researchSuppliers(input: ResearchSuppliersInput): Promise<ResearchSuppliersOutput> {
+    const reasoningByLeadId: Record<string, string> = {};
+    for (const option of input.options) {
+      const parts: string[] = [];
+      parts.push(`custo de referência entre US$ ${option.unitCostUsdMin} e US$ ${option.unitCostUsdMax} por unidade`);
+      parts.push(`pedido mínimo de ${option.moq} unidades`);
+      parts.push(`prazo de entrega estimado em ${option.leadTimeDays} dias`);
+      if (option.estimatedMarginPercent !== null) {
+        parts.push(
+          option.estimatedMarginPercent >= 50
+            ? `margem estimada excelente (~${option.estimatedMarginPercent.toFixed(0)}%) frente ao preço de venda informado`
+            : option.estimatedMarginPercent >= 20
+              ? `margem estimada razoável (~${option.estimatedMarginPercent.toFixed(0)}%)`
+              : `margem estimada apertada (~${option.estimatedMarginPercent.toFixed(0)}%) — considere um preço de venda maior`
+        );
+      }
+      reasoningByLeadId[option.leadId] = `${option.name}: ${parts.join(", ")}.`;
+    }
+
+    const hasOriginalImports = input.options.some((o) => o.niche === "perfumes_importados_originais");
+    const summary = hasOriginalImports
+      ? `Para "${input.query}": os canais de marca própria árabe (Lattafa, Ard Al Zaafaran, Rasasi e similares) têm menor risco e ticket de entrada mais baixo. Os canais de grife original (importação paralela) têm custo unitário maior e risco de autenticidade — exija nota fiscal rastreável e desconfie de preço muito abaixo do praticado por distribuidores oficiais.`
+      : `Para "${input.query}": priorize fornecedores de marca própria (menor risco de autenticidade) e negocie o MOQ mínimo para validar o giro antes de comprar em volume maior.`;
+
+    return { summary, reasoningByLeadId };
   }
 }

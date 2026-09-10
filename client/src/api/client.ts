@@ -1,13 +1,26 @@
 import type {
   AppSettings,
   FinancialSummary,
+  FxMethod,
   Marketplace,
   OptimizationLogEntry,
   Order,
   Product,
   ProductMarketplaceConnection,
   RecommendationResult,
+  SourcingResearchResult,
 } from "../types/domain";
+
+export interface ProductInput {
+  name: string;
+  description: string;
+  category: string;
+  basePrice: number;
+  /** Pass null to clear a previously-set cost basis. */
+  costBasis?: number | null;
+  sku: string;
+  keywords: string[];
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -24,10 +37,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   listProducts: () => request<Product[]>("/products"),
-  createProduct: (payload: Partial<Product>) =>
+  createProduct: (payload: ProductInput) =>
     request<Product>("/products", { method: "POST", body: JSON.stringify(payload) }),
   getProduct: (id: string) => request<Product>(`/products/${id}`),
-  updateProduct: (id: string, payload: Partial<Product>) =>
+  updateProduct: (id: string, payload: Partial<ProductInput>) =>
     request<Product>(`/products/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteProduct: (id: string) => request<void>(`/products/${id}`, { method: "DELETE" }),
 
@@ -69,4 +82,11 @@ export const api = {
   getProductFinancialSummary: (productId: string) =>
     request<FinancialSummary>(`/products/${productId}/financial-summary`),
   getGlobalFinancialSummary: () => request<FinancialSummary>("/financial-summary"),
+
+  listFxMethods: () => request<FxMethod[]>("/sourcing/fx-methods"),
+  researchSuppliers: (query: string, desiredResalePrice?: number) =>
+    request<SourcingResearchResult>("/sourcing/research", {
+      method: "POST",
+      body: JSON.stringify({ query, desiredResalePrice }),
+    }),
 };

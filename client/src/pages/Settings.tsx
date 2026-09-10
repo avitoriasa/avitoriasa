@@ -116,6 +116,20 @@ export function Settings() {
           trocando título, descrição e palavras-chave para evitar estagnação no ranking do marketplace.
         </p>
 
+        <label className="flex flex-col gap-1 text-sm text-slate-700">
+          <span>Cotação USD → BRL (para custos de fornecedores)</span>
+          <input
+            type="number"
+            step="0.01"
+            className="input max-w-[160px]"
+            value={settings.usdToBrlRate}
+            onChange={(e) => setSettings({ ...settings, usdToBrlRate: Number(e.target.value) })}
+          />
+          <span className="text-xs text-slate-400">
+            Não é uma cotação ao vivo — atualize manualmente conforme o câmbio do dia na tela de Fornecedores.
+          </span>
+        </label>
+
         {message && <p className="text-sm text-indigo-700">{message}</p>}
 
         <div>

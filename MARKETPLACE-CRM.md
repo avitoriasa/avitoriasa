@@ -6,6 +6,7 @@ CRM para conectar seus produtos aos melhores marketplaces. O sistema:
 2. **Conecta o produto** ao marketplace escolhido (adapters mockados para Mercado Livre, Shopee, Amazon Brasil, Magazine Luiza e Shein — prontos para receber credenciais reais), já calculando o preço de publicação a partir da taxa daquele marketplace.
 3. **Reotimiza continuamente** título, descrição e palavras-chave (SEO) de cada anúncio conectado, em ciclos automáticos, para evitar estagnação no ranking do marketplace.
 4. **Acompanha o financeiro** de cada produto/marketplace: vendas, taxa cobrada e repasse esperado (hoje simulado, pronto para ligar às APIs reais de pedidos de cada marketplace).
+5. **Pesquisa fornecedores de atacado** (foco inicial: perfumes árabes e perfumes importados originais) via IA, com estimativa de custo em BRL, MOQ, prazo, margem e uma calculadora de câmbio — para comprar barato e revender nos marketplaces conectados.
 
 ## Estrutura
 
@@ -94,6 +95,18 @@ O que o CRM oferece é uma **visão financeira consolidada**, hoje simulada e pr
 - O scheduler já busca novos pedidos e amadurece repasses a cada ciclo; também dá para forçar uma venda simulada pelo botão **"Simular venda"** na tela do produto (ou `POST /api/connections/:id/orders/simulate`), útil para testar sem esperar o ciclo automático.
 - O resumo financeiro (bruto, taxas, pendente, repassado) aparece na tela do produto e no Dashboard.
 
+## Fornecedores (comprar no atacado para revender)
+
+Tela **Fornecedores** (`client/src/pages/Sourcing.tsx`) para pesquisar canais de compra no atacado, hoje com foco em **perfumes árabes** e **perfumes importados originais**:
+
+- `server/src/data/supplierLeads.ts` é uma lista curada de referência (marcas árabes de atacado direto como Lattafa, Ard Al Zaafaran, Rasasi, Swiss Arabian, Ajmal, Al Haramain, e linhas "inspired by" como Armaf/Paris Corner/Fragrance World, além de canais de importação paralela para grifes originais e plataformas B2B gerais como Alibaba/TradeKey) — **não é dado ao vivo/raspado**; os custos são faixas de referência para planejamento, sempre confirme preço/MOQ/autenticidade direto com o fornecedor antes de comprar.
+- `server/src/services/sourcingService.ts` filtra esse catálogo pela busca, converte o custo para BRL usando `settings.usdToBrlRate` (cotação que você atualiza manualmente em Configurações — não é uma cotação ao vivo), calcula a margem estimada se você informar um preço de venda pretendido, e pede à IA (`AIProvider.researchSuppliers`) apenas a análise em texto — os números vêm sempre do catálogo curado, a IA nunca inventa fornecedor ou preço.
+- Uma **calculadora de câmbio** de referência compara o custo total pagando o fornecedor por diferentes métodos (conta PJ internacional, remessa bancária, cartão corporativo, carta de crédito), usando spreads típicos (`server/src/data/fxMethods.ts`) — troque por cotações reais da sua fintech/banco quando for pagar de verdade.
+- Um botão em cada opção ("Usar esta opção para criar produto") pré-preenche o formulário de novo produto com nome, categoria, custo de aquisição e palavras-chave, fechando o ciclo: pesquisar fornecedor → cadastrar produto com custo → ver recomendação de marketplace e margem → conectar e vender.
+- A tela também traz um checklist informativo (não é aconselhamento jurídico/tributário) sobre importação comercial de perfumes no Brasil: CNPJ + habilitação no Radar Siscomex, Autorização de Funcionamento (AFE) da Anvisa, classificação NCM 3303, e tributos sobre o valor aduaneiro (II, IPI, PIS/COFINS monofásico, ICMS) — bem diferente do regime simplificado de compras de pessoa física ("remessa conforme"), que não vale para importação comercial em volume.
+
+Para extrapolar para outros nichos além de perfumes: adicione mais entradas a `supplierLeads.ts` (ou troque o módulo por uma integração real com uma API de sourcing B2B) — o resto do fluxo não muda.
+
 ## Otimização automática (SEO sempre em evolução)
 
 Um job (`server/src/services/schedulerService.ts`, via `node-cron`) roda periodicamente (configurável em **Configurações**) e, para cada anúncio conectado cujo "cooldown" já passou, gera uma nova variação de título/descrição/palavras-chave via IA e a publica no adapter do marketplace, registrando tudo no histórico do produto. Isso simula a manutenção contínua de SEO para não deixar o anúncio "estagnar" no ranking.
@@ -120,3 +133,5 @@ Também é possível disparar manualmente:
 | POST | `/api/connections/:id/orders/simulate` | simular uma venda agora |
 | GET | `/api/products/:id/financial-summary` | resumo financeiro do produto |
 | GET | `/api/financial-summary` | resumo financeiro global |
+| GET | `/api/sourcing/fx-methods` | métodos de câmbio de referência |
+| POST | `/api/sourcing/research` | pesquisar fornecedores por nicho/consulta |

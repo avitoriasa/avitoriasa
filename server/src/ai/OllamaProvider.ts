@@ -4,6 +4,8 @@ import {
   ExplainRecommendationOutput,
   GenerateListingContentInput,
   GenerateListingContentOutput,
+  ResearchSuppliersInput,
+  ResearchSuppliersOutput,
 } from "./AIProvider.js";
 
 /**
@@ -88,5 +90,21 @@ Responda APENAS em JSON no formato:
       description: result.description.slice(0, input.marketplace.descriptionMaxLength),
       keywords: result.keywords.slice(0, input.marketplace.maxKeywords),
     };
+  }
+
+  async researchSuppliers(input: ResearchSuppliersInput): Promise<ResearchSuppliersOutput> {
+    const prompt = `Você é um consultor de sourcing/importação para revendedores brasileiros de perfumes.
+Os dados abaixo são opções de fornecimento JÁ PESQUISADAS (custo, MOQ, prazo, margem) — você NÃO deve
+inventar fornecedores, preços ou dados novos. Sua tarefa é apenas: (1) escrever uma frase de análise
+estratégica objetiva para cada opção, e (2) um resumo geral de estratégia de compra para a busca "${input.query}",
+considerando risco de autenticidade (especialmente para grifes originais importadas via mercado paralelo)
+e a relação custo x margem.
+
+Opções: ${JSON.stringify(input.options, null, 2)}
+
+Responda APENAS em JSON no formato:
+{"summary": "...", "reasoningByLeadId": {"<leadId>": "<análise em português>", ...}}`;
+
+    return this.generateJson<ResearchSuppliersOutput>(prompt);
   }
 }

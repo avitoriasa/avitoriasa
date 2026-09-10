@@ -8,6 +8,7 @@ import { ordersRouter } from "./routes/orders.js";
 import { productsRouter } from "./routes/products.js";
 import { schedulerRouter } from "./routes/scheduler.js";
 import { settingsRouter } from "./routes/settings.js";
+import { sourcingRouter } from "./routes/sourcing.js";
 import { ensureSeedData } from "./seed.js";
 import { startScheduler } from "./services/schedulerService.js";
 
@@ -24,6 +25,7 @@ app.use("/api/settings", settingsRouter);
 app.use("/api/scheduler", schedulerRouter);
 app.use("/api/optimizations", optimizationsRouter);
 app.use("/api", ordersRouter);
+app.use("/api/sourcing", sourcingRouter);
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 

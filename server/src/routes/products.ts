@@ -15,7 +15,7 @@ productsRouter.get("/", async (_req, res) => {
 });
 
 productsRouter.post("/", async (req, res) => {
-  const { name, description, category, basePrice, sku, keywords } = req.body ?? {};
+  const { name, description, category, basePrice, costBasis, sku, keywords } = req.body ?? {};
   if (!name || !category || basePrice === undefined || !sku) {
     return res.status(400).json({ error: "Campos obrigatórios: name, category, basePrice, sku" });
   }
@@ -28,6 +28,7 @@ productsRouter.post("/", async (req, res) => {
     description: description ?? "",
     category,
     basePrice: Number(basePrice),
+    costBasis: costBasis !== undefined && costBasis !== null && costBasis !== "" ? Number(costBasis) : undefined,
     sku,
     keywords: Array.isArray(keywords) ? keywords : [],
     createdAt: now,
@@ -58,7 +59,7 @@ productsRouter.put("/:id", async (req, res) => {
   const index = store.products.findIndex((p) => p.id === req.params.id);
   if (index === -1) return res.status(404).json({ error: "Produto não encontrado" });
 
-  const { name, description, category, basePrice, sku, keywords } = req.body ?? {};
+  const { name, description, category, basePrice, costBasis, sku, keywords } = req.body ?? {};
   const existing = store.products[index];
   const priceChanged = basePrice !== undefined && Number(basePrice) !== existing.basePrice;
   const updated: Product = {
@@ -67,6 +68,8 @@ productsRouter.put("/:id", async (req, res) => {
     description: description ?? existing.description,
     category: category ?? existing.category,
     basePrice: basePrice !== undefined ? Number(basePrice) : existing.basePrice,
+    costBasis:
+      costBasis !== undefined ? (costBasis === null || costBasis === "" ? undefined : Number(costBasis)) : existing.costBasis,
     sku: sku ?? existing.sku,
     keywords: Array.isArray(keywords) ? keywords : existing.keywords,
     updatedAt: new Date().toISOString(),

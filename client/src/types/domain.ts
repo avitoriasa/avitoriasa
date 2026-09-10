@@ -5,6 +5,8 @@ export interface Product {
   category: string;
   /** Preço líquido que você quer receber por unidade vendida (sem a taxa do marketplace). */
   basePrice: number;
+  /** Custo de aquisição (landed cost) por unidade, se o produto veio de uma opção de fornecimento. */
+  costBasis?: number;
   sku: string;
   keywords: string[];
   createdAt: string;
@@ -117,4 +119,40 @@ export interface AppSettings {
   ollamaModel: string;
   optimizationIntervalHours: number;
   optimizationCooldownHours: number;
+  usdToBrlRate: number;
+}
+
+export type SupplierNiche = "perfumes_arabes" | "perfumes_importados_originais" | "geral_b2b";
+
+export interface SourcingOption {
+  leadId: string;
+  name: string;
+  niche: SupplierNiche;
+  channel: string;
+  country: string;
+  unitCostUsdMin: number;
+  unitCostUsdMax: number;
+  unitCostBrlMin: number;
+  unitCostBrlMax: number;
+  moq: number;
+  leadTimeDays: number;
+  riskNotes: string;
+  productExamples: string[];
+  estimatedMarginPercent: number | null;
+  reasoning: string;
+}
+
+export interface SourcingResearchResult {
+  query: string;
+  usdToBrlRate: number;
+  summary: string;
+  aiProvider: string;
+  options: SourcingOption[];
+}
+
+export interface FxMethod {
+  id: string;
+  name: string;
+  typicalSpreadPercent: number;
+  notes: string;
 }

@@ -31,6 +31,8 @@ const defaultSettings: AppSettings = {
   ollamaModel: process.env.OLLAMA_MODEL || "llama3",
   optimizationIntervalHours: Number(process.env.OPTIMIZATION_INTERVAL_HOURS) || 6,
   optimizationCooldownHours: Number(process.env.OPTIMIZATION_COOLDOWN_HOURS) || 24,
+  // Placeholder — não é uma cotação ao vivo. Atualize em Configurações ou via USD_TO_BRL_RATE.
+  usdToBrlRate: Number(process.env.USD_TO_BRL_RATE) || 5.3,
 };
 
 function emptySchema(): Schema {

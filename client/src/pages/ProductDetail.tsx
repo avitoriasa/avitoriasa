@@ -149,6 +149,16 @@ export function ProductDetail() {
         <h2 className="text-2xl font-semibold text-slate-900 mt-2">{product.name}</h2>
         <p className="text-slate-500 text-sm mt-1">
           {product.category} · SKU {product.sku} · líquido desejado {formatBRL(product.basePrice)}
+          {product.costBasis !== undefined && (
+            <>
+              {" "}
+              · custo de aquisição {formatBRL(product.costBasis)} · margem{" "}
+              <span className="font-medium text-slate-700">
+                {formatBRL(product.basePrice - product.costBasis)} (
+                {(((product.basePrice - product.costBasis) / product.basePrice) * 100).toFixed(0)}%)
+              </span>
+            </>
+          )}
         </p>
       </div>
 
@@ -277,6 +287,15 @@ export function ProductDetail() {
                         Você recebe: <span className="font-medium text-slate-800">{formatBRL(conn.pricing.basePrice)}</span> por
                         venda
                       </span>
+                      {product.costBasis !== undefined && (
+                        <span>
+                          Margem sobre o custo:{" "}
+                          <span className="font-medium text-slate-800">
+                            {formatBRL(conn.pricing.basePrice - product.costBasis)} (
+                            {(((conn.pricing.basePrice - product.costBasis) / conn.pricing.basePrice) * 100).toFixed(0)}%)
+                          </span>
+                        </span>
+                      )}
                     </div>
 
                     <p className="text-xs text-slate-400 mt-2">

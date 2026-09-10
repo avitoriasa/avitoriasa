@@ -5,6 +5,7 @@ import { Marketplaces } from "./pages/Marketplaces";
 import { ProductDetail } from "./pages/ProductDetail";
 import { Products } from "./pages/Products";
 import { Settings } from "./pages/Settings";
+import { Sourcing } from "./pages/Sourcing";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Route path="products" element={<Products />} />
           <Route path="products/:id" element={<ProductDetail />} />
           <Route path="marketplaces" element={<Marketplaces />} />
+          <Route path="sourcing" element={<Sourcing />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
