@@ -375,3 +375,92 @@ export interface OnboardingPipelineResult {
   inventoryPlan: InventoryPlan | null;
   aiProvider: string;
 }
+
+/** Whether a keyword's search interest is rising, flat or falling — see trendsProvider.ts. */
+export type TrendDirection = "subindo" | "estavel" | "caindo";
+
+/** A related search query gaining traction alongside a tracked keyword. */
+export interface RisingQuery {
+  query: string;
+  /** Approximate growth vs. the prior period. Reference figure, not a live measurement unless SerpApi is configured. */
+  growthPercent: number;
+}
+
+/**
+ * Search-interest signal for one keyword in one region. By default this
+ * comes from a curated reference dataset (data/trendSignals.ts) — there is
+ * no official free Google Trends API. When SERPAPI_KEY is configured,
+ * SerpApiTrendsProvider fetches real Google Trends data instead (see
+ * services/trendsProvider.ts); either way the shape below is what the rest
+ * of the pipeline consumes, and `source` says which one produced it.
+ */
+export interface TrendSignal {
+  keyword: string;
+  region: string;
+  /** 0-100, Google Trends' own relative-interest scale (or a curated estimate). */
+  interestScore: number;
+  direction: TrendDirection;
+  risingQueries: RisingQuery[];
+  /** "google_trends" (real, via SerpApi) or "curado" (reference dataset, no live data). */
+  source: string;
+  updatedAt: string;
+}
+
+/**
+ * A keyword ranked as an SEO opportunity for one product: interestScore
+ * comes straight from a TrendSignal, relevanceScore is computed
+ * deterministically (word-overlap against the product's own name/
+ * description/category/keywords — see seoTrendsService.ts), and
+ * combinedScore blends both. reasoning is the only AI-written field here.
+ */
+export interface SeoOpportunity {
+  keyword: string;
+  interestScore: number;
+  relevanceScore: number;
+  combinedScore: number;
+  direction: TrendDirection;
+  risingQueries: RisingQuery[];
+  reasoning: string;
+}
+
+/**
+ * Deterministic starting budget range for paid ads on a marketplace,
+ * derived from the product's own net price (see seoTrendsService.
+ * suggestAdBudget) — not a bid/spend automation, just a reference the
+ * seller can start from and adjust by hand in that marketplace's own ads
+ * manager.
+ */
+export interface AdBudgetSuggestion {
+  dailyMinBrl: number;
+  dailyMaxBrl: number;
+  rationale: string;
+}
+
+/**
+ * AI-drafted creative brief for a paid listing/ad — copy only. No
+ * marketplace ad-platform is integrated here (no OAuth, no spend, no
+ * campaign creation): this is a starting point to paste into that
+ * marketplace's own ads manager.
+ */
+export interface AdCopyBrief {
+  headline: string;
+  primaryText: string;
+  targetingNotes: string;
+  suggestedKeywords: string[];
+}
+
+/** Full result of the "trends & SEO/ads" agent for one product (routes/trends.ts). */
+export interface TrendsAnalysisResult {
+  productId: string;
+  marketplaceId: string | null;
+  marketplaceName: string;
+  region: string;
+  generatedAt: string;
+  signals: TrendSignal[];
+  opportunities: SeoOpportunity[];
+  seoSummary: string;
+  adBudget: AdBudgetSuggestion;
+  adCopy: AdCopyBrief;
+  aiProvider: string;
+  trendsProvider: string;
+}

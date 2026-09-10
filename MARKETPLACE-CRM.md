@@ -9,6 +9,7 @@ CRM para conectar seus produtos aos melhores marketplaces. O sistema:
 5. **Pesquisa fornecedores confiáveis de beleza automaticamente** (perfumaria, skincare, maquiagem, cabelo — com foco em produtos de marca) via IA, ranqueando sempre pelo **menor custo total de importação** (produto + frete + impostos de referência) e mostrando o **nível de confiança** de cada canal, com MOQ, prazo, margem estimada e uma calculadora de câmbio.
 6. **Funciona nos dois modelos, com dropshipping como padrão**: compre por pedido só depois que a venda acontece (sem comprar antes) — e, quando você preferir comprar no atacado e manter estoque, o **controle de estoques** entra automaticamente em ação.
 7. **Multiagentes de IA** rodam uma "esteira" por opção de fornecedor escolhida: um agente analisa a confiança do fornecedor e, se fizer sentido manter estoque, outro agente sugere o plano de reposição — cada agente usa o modelo configurado (heurístico ou Ollama/Llama).
+8. **Analisa tendências de busca (Google Trends, Brasil) e sugere SEO/anúncios pagos**: um agente de IA cruza o interesse de busca de palavras-chave relacionadas ao produto com a aderência ao próprio produto, ranqueia as melhores oportunidades e rascunha um anúncio pago com orçamento de referência — para colar no gerenciador de anúncios de cada marketplace, não para disparar campanha sozinho.
 
 ## Estrutura
 
@@ -146,6 +147,20 @@ Só existe para produtos em modo `"stock"` — quando você decide comprar antes
 - `server/src/services/inventoryService.ts` é a camada de aplicação (casos de uso): `recordStockPurchase`, `consumeStockForSale`, `adjustStock`, `setReorderPoint`. Uma compra de estoque também atualiza `Product.costBasis` para o novo custo médio, mantendo a margem exibida no produto sempre correta.
 - Toda venda de um produto em modo `"stock"` decrementa o estoque automaticamente (`ordersService.ts` chama `consumeStockForSale` ao registrar cada pedido) — se o saldo for insuficiente, a venda é registrada mas o estoque não fica negativo (fica um aviso no log do servidor); produtos em dropshipping não têm registro de estoque, então nada acontece para eles.
 
+## Tendências de busca, SEO e anúncios pagos (agente de IA)
+
+Na página de um produto, o botão **"Analisar tendências"** roda um agente de IA que:
+
+1. Monta uma lista de palavras-chave a partir do próprio produto (categoria, palavras-chave cadastradas, termos do nome) — `server/src/services/seoTrendsService.ts#buildKeywordCandidates`.
+2. Busca o interesse de busca (0-100, escala do próprio Google Trends) e as buscas relacionadas em ascensão para cada palavra-chave, na região Brasil — `server/src/services/trendsProvider.ts`.
+3. Calcula, de forma determinística, a relevância de cada palavra-chave para aquele produto específico (sobreposição de termos com nome/descrição/categoria) e uma pontuação combinada (interesse × relevância) — `seoTrendsService.ts#computeSeoOpportunities`.
+4. Só então chama a IA (heurística ou Ollama/Llama) para escrever a análise em português de cada oportunidade e um resumo estratégico, e para rascunhar um título/texto/segmentação de anúncio — a IA nunca inventa nem reordena os números acima, apenas explica e cria a copy (mesmo padrão usado no resto do app: números determinísticos, IA só narra).
+5. O orçamento diário sugerido para o anúncio também é calculado por fórmula (10%-30% do preço líquido do produto, entre R$ 10 e R$ 300) — não por IA.
+
+**Importante sobre a fonte de dados de tendências**: não existe uma API pública e gratuita oficial do Google Trends (a biblioteca não-oficial mais usada, `pytrends`, foi arquivada em 2025). Por padrão este app usa `CuratedTrendsProvider`, um dataset de referência curado à mão (`server/src/data/trendSignals.ts`) para termos de beleza/perfumaria — sinalizado como `source: "curado"` no resultado, para deixar claro que não é dado ao vivo. Se você configurar `SERPAPI_KEY` (conta em [serpapi.com](https://serpapi.com), tem plano gratuito), o app passa a buscar dados reais do Google Trends via `SerpApiTrendsProvider`, com fallback automático para o dataset curado em caso de falha (mesmo padrão do `ResilientAIProvider`).
+
+**Importante sobre os anúncios pagos**: nenhuma plataforma de anúncios de marketplace está integrada (sem OAuth, sem criação de campanha, sem gasto automático). O resultado é só um rascunho de copy + orçamento de referência para você colar manualmente no gerenciador de anúncios de cada marketplace.
+
 ## Arquitetura (DDD e por que só nos módulos novos)
 
 Os módulos adicionados nesta rodada (estoque, fornecedores confiáveis, agentes) seguem DDD de propósito: **domínio** (entidade com invariantes, sem dependência de framework) → **aplicação** (casos de uso que orquestram a entidade + repositório) → **infraestrutura** (tradução para o armazenamento JSON) → **rotas** (adaptador HTTP fino). `InventoryItem` é o exemplo mais claro disso.
@@ -191,3 +206,4 @@ Também é possível disparar manualmente:
 | POST | `/api/products/:id/inventory/purchase` | registrar entrada de estoque (compra) |
 | POST | `/api/products/:id/inventory/adjust` | ajustar estoque manualmente (contagem física) |
 | PUT | `/api/products/:id/inventory/reorder-point` | definir o ponto de reposição |
+| POST | `/api/trends/analyze` | rodar o agente de tendências/SEO/anúncios pagos para um produto |

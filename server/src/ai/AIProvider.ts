@@ -1,4 +1,4 @@
-import { Marketplace, Product, RecommendationEntry, SourcingOption, TrustTier } from "../types.js";
+import { AdBudgetSuggestion, Marketplace, Product, RecommendationEntry, SeoOpportunity, SourcingOption, TrustTier } from "../types.js";
 
 export interface ExplainRecommendationInput {
   product: Product;
@@ -80,6 +80,42 @@ export interface PlanInventoryOutput {
 }
 
 /**
+ * "Trends/SEO analyst" agent input. `opportunities` are already ranked by
+ * seoTrendsService.computeSeoOpportunities (interest + relevance scores) —
+ * the agent only writes the strategic summary and per-keyword reasoning,
+ * it must not reorder or invent scores.
+ */
+export interface AnalyzeSeoTrendsInput {
+  product: Product;
+  opportunities: Omit<SeoOpportunity, "reasoning">[];
+}
+
+export interface AnalyzeSeoTrendsOutput {
+  /** Overall SEO strategy summary for this product given the trend data. */
+  summary: string;
+  /** Per-opportunity reasoning, keyed by keyword. */
+  reasoningByKeyword: Record<string, string>;
+}
+
+/**
+ * "Ad copy" agent input. `budget` is already computed deterministically
+ * (see seoTrendsService.suggestAdBudget) from the product's own price — the
+ * agent only drafts creative copy on top of it, never a number.
+ */
+export interface DraftAdCopyInput {
+  product: Product;
+  marketplaceName: string;
+  topKeywords: string[];
+  budget: AdBudgetSuggestion;
+}
+
+export interface DraftAdCopyOutput {
+  headline: string;
+  primaryText: string;
+  targetingNotes: string;
+}
+
+/**
  * Pluggable AI provider. Implementations must not throw for expected
  * conditions — the caller (see src/ai/index.ts) treats any thrown error as
  * "provider unavailable" and falls back to the heuristic provider.
@@ -87,9 +123,10 @@ export interface PlanInventoryOutput {
  * Each method here is a distinct "agent" in the onboarding pipeline
  * (agentOrchestrator.ts): a marketplace strategist (explainRecommendation),
  * an SEO copywriter (generateListingContent), a sourcing analyst
- * (researchSuppliers), a trust analyst (assessSupplierTrust) and an
- * inventory planner (planInventory) — each gets only the narrow input it
- * needs and never invents the numbers it's given.
+ * (researchSuppliers), a trust analyst (assessSupplierTrust), an
+ * inventory planner (planInventory), a trends/SEO analyst
+ * (analyzeSeoTrends) and an ad copywriter (draftAdCopy) — each gets only
+ * the narrow input it needs and never invents the numbers it's given.
  */
 export interface AIProvider {
   readonly name: string;
@@ -98,4 +135,6 @@ export interface AIProvider {
   researchSuppliers(input: ResearchSuppliersInput): Promise<ResearchSuppliersOutput>;
   assessSupplierTrust(input: AssessSupplierTrustInput): Promise<AssessSupplierTrustOutput>;
   planInventory(input: PlanInventoryInput): Promise<PlanInventoryOutput>;
+  analyzeSeoTrends(input: AnalyzeSeoTrendsInput): Promise<AnalyzeSeoTrendsOutput>;
+  draftAdCopy(input: DraftAdCopyInput): Promise<DraftAdCopyOutput>;
 }

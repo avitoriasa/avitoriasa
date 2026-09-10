@@ -11,6 +11,7 @@ import type {
   ProductMarketplaceConnection,
   RecommendationResult,
   StockMovement,
+  TrendsAnalysisResult,
 } from "../types/domain";
 
 function formatBRL(value: number): string {
@@ -380,6 +381,8 @@ export function ProductDetail() {
           </ul>
         )}
       </section>
+
+      <TrendsPanel productId={product.id} connections={connections} marketplaces={marketplaces} />
     </div>
   );
 }
@@ -743,6 +746,144 @@ function InventoryPanel({ productId }: { productId: string }) {
               ))}
             </ul>
           )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+const DIRECTION_LABEL: Record<string, string> = {
+  subindo: "↑ em alta",
+  caindo: "↓ em queda",
+  estavel: "→ estável",
+};
+
+const DIRECTION_CLASS: Record<string, string> = {
+  subindo: "bg-emerald-100 text-emerald-700",
+  caindo: "bg-red-100 text-red-700",
+  estavel: "bg-slate-100 text-slate-600",
+};
+
+function TrendsPanel({
+  productId,
+  connections,
+  marketplaces,
+}: {
+  productId: string;
+  connections: ProductMarketplaceConnection[];
+  marketplaces: Marketplace[];
+}) {
+  const [result, setResult] = useState<TrendsAnalysisResult | null>(null);
+  const [marketplaceId, setMarketplaceId] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const connectedMarketplaces = connections
+    .filter((c) => c.status === "connected")
+    .map((c) => marketplaces.find((m) => m.id === c.marketplaceId))
+    .filter((m): m is Marketplace => Boolean(m));
+
+  async function handleAnalyze() {
+    setLoading(true);
+    try {
+      setResult(await api.analyzeTrends(productId, marketplaceId || undefined));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section className="bg-white rounded-lg border border-slate-200 p-5">
+      <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+        <h3 className="font-medium text-slate-900">Tendências de busca &amp; SEO (IA)</h3>
+        <div className="flex items-center gap-2">
+          {connectedMarketplaces.length > 0 && (
+            <select
+              className="input !text-xs !py-1"
+              value={marketplaceId}
+              onChange={(e) => setMarketplaceId(e.target.value)}
+            >
+              <option value="">Todos os marketplaces conectados</option>
+              {connectedMarketplaces.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={handleAnalyze}
+            disabled={loading}
+            className="text-xs px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {loading ? "Analisando..." : "Analisar tendências"}
+          </button>
+        </div>
+      </div>
+
+      {!result ? (
+        <p className="text-sm text-slate-500">
+          Roda um agente de IA sobre um painel de interesse de busca (Google Trends, Brasil) relacionado a este
+          produto: sugere palavras-chave de SEO com maior potencial e um rascunho de anúncio pago, com orçamento de
+          referência. Sem chave de API configurada (SERPAPI_KEY), usa um dataset curado de referência em vez de
+          dados ao vivo.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <p className="text-xs text-slate-400">
+            Gerado em {new Date(result.generatedAt).toLocaleString("pt-BR")} · fonte de tendências:{" "}
+            <span className="font-mono">{result.trendsProvider}</span> · modelo:{" "}
+            <span className="font-mono">{result.aiProvider}</span>
+          </p>
+
+          <p className="text-sm text-slate-700">{result.seoSummary}</p>
+
+          <div>
+            <p className="text-xs font-medium text-slate-700 mb-2">Oportunidades de palavra-chave</p>
+            <ul className="flex flex-col gap-2">
+              {result.opportunities.map((opp) => (
+                <li key={opp.keyword} className="border border-slate-200 rounded-md p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium text-slate-900 flex items-center gap-2">
+                      {opp.keyword}
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${DIRECTION_CLASS[opp.direction]}`}>
+                        {DIRECTION_LABEL[opp.direction]}
+                      </span>
+                    </span>
+                    <ScoreBar score={opp.combinedScore} />
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Interesse de busca: {opp.interestScore}/100 · Relevância para o produto: {opp.relevanceScore}/100
+                  </p>
+                  {opp.risingQueries.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {opp.risingQueries.map((r) => (
+                        <span key={r.query} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                          {r.query} (+{r.growthPercent}%)
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-sm text-slate-600 mt-2">{opp.reasoning}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="bg-slate-50 border border-slate-200 rounded-md p-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+              <p className="text-xs font-medium text-slate-700">Rascunho de anúncio pago ({result.marketplaceName})</p>
+              <span className="text-xs text-slate-500">
+                Orçamento sugerido: {formatBRL(result.adBudget.dailyMinBrl)} - {formatBRL(result.adBudget.dailyMaxBrl)}/dia
+              </span>
+            </div>
+            <p className="text-sm font-medium text-slate-900">{result.adCopy.headline}</p>
+            <p className="text-sm text-slate-600 mt-1">{result.adCopy.primaryText}</p>
+            <p className="text-xs text-slate-500 mt-2">{result.adCopy.targetingNotes}</p>
+            <p className="text-xs text-slate-400 mt-2 italic">
+              Rascunho estratégico apenas — nenhuma campanha é criada ou paga automaticamente. Copie e ajuste no
+              gerenciador de anúncios de cada marketplace.
+            </p>
+          </div>
         </div>
       )}
     </section>

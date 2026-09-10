@@ -2,8 +2,12 @@ import { db } from "../db.js";
 import { AppSettings } from "../types.js";
 import {
   AIProvider,
+  AnalyzeSeoTrendsInput,
+  AnalyzeSeoTrendsOutput,
   AssessSupplierTrustInput,
   AssessSupplierTrustOutput,
+  DraftAdCopyInput,
+  DraftAdCopyOutput,
   ExplainRecommendationInput,
   ExplainRecommendationOutput,
   GenerateListingContentInput,
@@ -63,6 +67,14 @@ class ResilientAIProvider implements AIProvider {
 
   planInventory(input: PlanInventoryInput): Promise<PlanInventoryOutput> {
     return this.run("planInventory", (p) => p.planInventory(input));
+  }
+
+  analyzeSeoTrends(input: AnalyzeSeoTrendsInput): Promise<AnalyzeSeoTrendsOutput> {
+    return this.run("analyzeSeoTrends", (p) => p.analyzeSeoTrends(input));
+  }
+
+  draftAdCopy(input: DraftAdCopyInput): Promise<DraftAdCopyOutput> {
+    return this.run("draftAdCopy", (p) => p.draftAdCopy(input));
   }
 }
 

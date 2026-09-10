@@ -11,6 +11,7 @@ import { productsRouter } from "./routes/products.js";
 import { schedulerRouter } from "./routes/scheduler.js";
 import { settingsRouter } from "./routes/settings.js";
 import { sourcingRouter } from "./routes/sourcing.js";
+import { trendsRouter } from "./routes/trends.js";
 import { trustedSuppliersRouter } from "./routes/trustedSuppliers.js";
 import { ensureSeedData } from "./seed.js";
 import { startScheduler } from "./services/schedulerService.js";
@@ -32,6 +33,7 @@ app.use("/api", ordersRouter);
 app.use("/api", inventoryRouter);
 app.use("/api/sourcing", sourcingRouter);
 app.use("/api/trusted-suppliers", trustedSuppliersRouter);
+app.use("/api/trends", trendsRouter);
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 

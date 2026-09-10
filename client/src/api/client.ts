@@ -14,6 +14,7 @@ import type {
   RecommendationResult,
   SourcingResearchResult,
   StockMovement,
+  TrendsAnalysisResult,
   TrustedSupplier,
 } from "../types/domain";
 
@@ -141,5 +142,11 @@ export const api = {
     request<InventorySummary>(`/products/${productId}/inventory/reorder-point`, {
       method: "PUT",
       body: JSON.stringify({ reorderPoint }),
+    }),
+
+  analyzeTrends: (productId: string, marketplaceId?: string) =>
+    request<TrendsAnalysisResult>("/trends/analyze", {
+      method: "POST",
+      body: JSON.stringify({ productId, marketplaceId }),
     }),
 };

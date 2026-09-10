@@ -252,3 +252,58 @@ export interface OnboardingPipelineResult {
   inventoryPlan: InventoryPlan | null;
   aiProvider: string;
 }
+
+export type TrendDirection = "subindo" | "estavel" | "caindo";
+
+export interface RisingQuery {
+  query: string;
+  growthPercent: number;
+}
+
+export interface TrendSignal {
+  keyword: string;
+  region: string;
+  interestScore: number;
+  direction: TrendDirection;
+  risingQueries: RisingQuery[];
+  source: string;
+  updatedAt: string;
+}
+
+export interface SeoOpportunity {
+  keyword: string;
+  interestScore: number;
+  relevanceScore: number;
+  combinedScore: number;
+  direction: TrendDirection;
+  risingQueries: RisingQuery[];
+  reasoning: string;
+}
+
+export interface AdBudgetSuggestion {
+  dailyMinBrl: number;
+  dailyMaxBrl: number;
+  rationale: string;
+}
+
+export interface AdCopyBrief {
+  headline: string;
+  primaryText: string;
+  targetingNotes: string;
+  suggestedKeywords: string[];
+}
+
+export interface TrendsAnalysisResult {
+  productId: string;
+  marketplaceId: string | null;
+  marketplaceName: string;
+  region: string;
+  generatedAt: string;
+  signals: TrendSignal[];
+  opportunities: SeoOpportunity[];
+  seoSummary: string;
+  adBudget: AdBudgetSuggestion;
+  adCopy: AdCopyBrief;
+  aiProvider: string;
+  trendsProvider: string;
+}

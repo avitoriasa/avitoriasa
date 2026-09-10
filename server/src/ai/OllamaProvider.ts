@@ -1,7 +1,11 @@
 import {
   AIProvider,
+  AnalyzeSeoTrendsInput,
+  AnalyzeSeoTrendsOutput,
   AssessSupplierTrustInput,
   AssessSupplierTrustOutput,
+  DraftAdCopyInput,
+  DraftAdCopyOutput,
   ExplainRecommendationInput,
   ExplainRecommendationOutput,
   GenerateListingContentInput,
@@ -152,5 +156,40 @@ Responda APENAS em JSON no formato:
 {"reasoning": "..."}`;
 
     return this.generateJson<PlanInventoryOutput>(prompt);
+  }
+
+  async analyzeSeoTrends(input: AnalyzeSeoTrendsInput): Promise<AnalyzeSeoTrendsOutput> {
+    const prompt = `Você é um analista de SEO e tendências de busca para e-commerce brasileiro.
+As oportunidades de palavra-chave abaixo JÁ FORAM calculadas e ordenadas (interestScore = interesse de busca no
+Google Trends para o Brasil, relevanceScore = quão aderente a palavra é a este produto específico, combinedScore =
+combinação das duas). Você NÃO deve reordenar, inventar ou mudar esses números. Sua única tarefa é: (1) escrever uma
+frase de análise para cada palavra-chave, considerando a direção da tendência (subindo/estável/caindo) e as buscas
+relacionadas em ascensão, e (2) um resumo estratégico de como usar essas palavras no título/descrição/anúncios do
+produto "${input.product.name}" (categoria: ${input.product.category}).
+
+Oportunidades (já ordenadas por combinedScore decrescente): ${JSON.stringify(input.opportunities, null, 2)}
+
+Responda APENAS em JSON no formato:
+{"summary": "...", "reasoningByKeyword": {"<keyword>": "<análise em português>", ...}}`;
+
+    return this.generateJson<AnalyzeSeoTrendsOutput>(prompt);
+  }
+
+  async draftAdCopy(input: DraftAdCopyInput): Promise<DraftAdCopyOutput> {
+    const prompt = `Você é um redator publicitário para marketplaces brasileiros. O orçamento diário abaixo JÁ FOI
+calculado (referência de 10%-30% do preço líquido do produto) — você NÃO deve mudar esses valores, apenas
+mencioná-los na nota de segmentação. Sua tarefa é escrever um título curto de anúncio, um texto principal e uma nota
+de segmentação de público, para veicular no marketplace "${input.marketplaceName}".
+
+Produto: ${input.product.name}
+Descrição: ${input.product.description}
+Categoria: ${input.product.category}
+Palavras-chave prioritárias (já calculadas por tendência+relevância): ${input.topKeywords.join(", ")}
+Orçamento diário de referência: R$ ${input.budget.dailyMinBrl} a R$ ${input.budget.dailyMaxBrl}
+
+Responda APENAS em JSON no formato:
+{"headline": "...", "primaryText": "...", "targetingNotes": "..."}`;
+
+    return this.generateJson<DraftAdCopyOutput>(prompt);
   }
 }

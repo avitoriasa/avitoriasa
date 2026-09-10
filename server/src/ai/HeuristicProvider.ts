@@ -1,7 +1,11 @@
 import {
   AIProvider,
+  AnalyzeSeoTrendsInput,
+  AnalyzeSeoTrendsOutput,
   AssessSupplierTrustInput,
   AssessSupplierTrustOutput,
+  DraftAdCopyInput,
+  DraftAdCopyOutput,
   ExplainRecommendationInput,
   ExplainRecommendationOutput,
   GenerateListingContentInput,
@@ -170,5 +174,52 @@ export class HeuristicProvider implements AIProvider {
     return {
       reasoning: `Com pedido mínimo de ${input.moq} unidades e prazo de entrega de ${input.leadTimeDays} dias, um ponto de reposição de ${input.reorderPoint} unidade(s) evita ficar sem estoque durante o tempo de importação; ao bater nesse ponto, repor ${input.reorderQuantity} unidade(s) (o próprio MOQ do fornecedor) mantém o custo por unidade no melhor patamar.`,
     };
+  }
+
+  async analyzeSeoTrends(input: AnalyzeSeoTrendsInput): Promise<AnalyzeSeoTrendsOutput> {
+    const reasoningByKeyword: Record<string, string> = {};
+    for (const opp of input.opportunities) {
+      const trendPhrase =
+        opp.direction === "subindo"
+          ? "em alta de busca"
+          : opp.direction === "caindo"
+            ? "em queda de busca — use com cautela"
+            : "com busca estável";
+      const relevancePhrase =
+        opp.relevanceScore >= 60
+          ? "muito aderente ao produto"
+          : opp.relevanceScore >= 30
+            ? "razoavelmente aderente ao produto"
+            : "pouco aderente ao produto — avalie antes de usar no título";
+      const risingPart = opp.risingQueries.length
+        ? ` Buscas relacionadas em ascensão: ${opp.risingQueries.map((r) => `"${r.query}" (+${r.growthPercent}%)`).join(", ")}.`
+        : "";
+      reasoningByKeyword[opp.keyword] =
+        `"${opp.keyword}" está ${trendPhrase} (interesse ${opp.interestScore}/100) e é ${relevancePhrase} (relevância ${opp.relevanceScore}/100). Pontuação combinada: ${opp.combinedScore}/100.${risingPart}`;
+    }
+
+    const top = input.opportunities[0];
+    const summary = top
+      ? `Para "${input.product.name}": a palavra-chave com melhor combinação de interesse de busca e aderência ao produto é "${top.keyword}" (pontuação ${top.combinedScore}/100). Priorize incluí-la no título e nas primeiras palavras-chave dos seus anúncios; use as demais oportunidades listadas para variar a descrição e testar novos anúncios ao longo do tempo.`
+      : `Nenhuma oportunidade de tendência encontrada para "${input.product.name}" — mantenha as palavras-chave atuais e tente novamente após ajustar nome/categoria/palavras-chave do produto.`;
+
+    return { summary, reasoningByKeyword };
+  }
+
+  async draftAdCopy(input: DraftAdCopyInput): Promise<DraftAdCopyOutput> {
+    const keyword = input.topKeywords[0] ?? input.product.category;
+    const headline = truncate(`${titleCase(input.product.name)} — ${keyword}`, 60);
+    const primaryText = [
+      `${titleCase(input.product.name)} para quem busca ${keyword}.`,
+      input.product.description,
+      `Disponível em ${input.marketplaceName}.`,
+    ].join(" ");
+    const targetingNotes = `Segmentar por interesse em "${keyword}"${
+      input.topKeywords.length > 1 ? ` e termos relacionados (${input.topKeywords.slice(1).join(", ")})` : ""
+    }, região Brasil. Orçamento diário de referência: R$ ${input.budget.dailyMinBrl.toFixed(2)} a R$ ${input.budget.dailyMaxBrl.toFixed(
+      2
+    )} — ajuste manualmente no gerenciador de anúncios do marketplace, este app não cria nem dispara campanhas automaticamente.`;
+
+    return { headline, primaryText, targetingNotes };
   }
 }
