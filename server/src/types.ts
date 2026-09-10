@@ -190,7 +190,25 @@ export interface AppSettings {
   remessaIcmsPercent: number;
 }
 
-export type SupplierNiche = "perfumes_arabes" | "perfumes_importados_originais" | "geral_b2b";
+/**
+ * How a sourcing channel is structured, which drives its authenticity risk:
+ * "marca_propria_atacado": direct wholesale from the brand/manufacturer's
+ * own line (own trademark, e.g. a Korean skincare house or an Arabic
+ * perfume house) — low authenticity risk.
+ * "importados_originais_marca": parallel/gray-market import of a
+ * third-party brand's genuine original goods (western perfumes, prestige
+ * skincare/makeup) — higher risk, since the brand didn't choose this
+ * distributor; always verify authenticity and paperwork.
+ * "geral_b2b": general B2B sourcing platforms (Alibaba, TradeKey) usable
+ * across categories.
+ */
+export type SupplierNiche = "marca_propria_atacado" | "importados_originais_marca" | "geral_b2b";
+
+/** Broad beauty category a sourcing channel serves. */
+export type BeautyCategory = "perfumes" | "skincare" | "maquiagem" | "cabelo" | "beleza_geral";
+
+/** Curated trust tier for a sourcing channel — see supplierLeads.ts for the criteria behind each tier. */
+export type TrustTier = "verificado" | "referencia" | "alerta";
 
 /**
  * Curated reference entry for a sourcing channel — NOT live/scraped data.
@@ -202,6 +220,7 @@ export interface SupplierLead {
   id: string;
   name: string;
   niche: SupplierNiche;
+  category: BeautyCategory;
   channel: string;
   country: string;
   unitCostUsdMin: number;
@@ -212,6 +231,11 @@ export interface SupplierLead {
   leadTimeDays: number;
   riskNotes: string;
   productExamples: string[];
+  trustTier: TrustTier;
+  /** 0-100, curated by hand from the trust signals below — not a live score. */
+  trustScore: number;
+  /** Concrete, checkable reasons behind the trust tier (e.g. "Marca própria registrada", "Trade Assurance"). */
+  trustSignals: string[];
 }
 
 /** Whether a lead's typical MOQ/ticket make it better suited to holding stock, per-order dropshipping, or either. */
@@ -222,6 +246,7 @@ export interface SourcingOption {
   leadId: string;
   name: string;
   niche: SupplierNiche;
+  category: BeautyCategory;
   channel: string;
   country: string;
   unitCostUsdMin: number;
@@ -239,7 +264,26 @@ export interface SourcingOption {
   productExamples: string[];
   estimatedMarginPercent: number | null;
   suggestedFulfillment: FulfillmentSuggestion;
+  trustTier: TrustTier;
+  trustScore: number;
+  trustSignals: string[];
   reasoning: string;
+}
+
+/**
+ * A supplier the USER has vetted and chosen to keep — distinct from the
+ * curated reference catalog (SupplierLead): this is the user's own trusted
+ * list, seeded optionally from a SourcingOption or entered by hand.
+ */
+export interface TrustedSupplier {
+  id: string;
+  name: string;
+  category: BeautyCategory;
+  channel: string;
+  country: string;
+  trustNotes: string;
+  sourceLeadId?: string;
+  addedAt: string;
 }
 
 export interface SourcingResearchResult {
@@ -276,4 +320,58 @@ export interface DropshipEstimate {
   icmsPercent: number;
   icmsBrl: number;
   totalLandedBrl: number;
+}
+
+export type StockMovementType = "purchase" | "sale" | "adjustment";
+
+/** Immutable historical record of a change in stock — the audit trail behind InventoryItem's current balance. */
+export interface StockMovement {
+  id: string;
+  productId: string;
+  type: StockMovementType;
+  /** Positive for stock coming in (purchase), negative for stock going out (sale/adjustment-down). */
+  quantity: number;
+  /** Only meaningful for "purchase" — what you paid per unit for this batch. */
+  unitCostBrl?: number;
+  note?: string;
+  occurredAt: string;
+}
+
+/** Persisted shape of the InventoryItem entity (see domain/InventoryItem.ts for the behavior/invariants). */
+export interface InventoryItemSnapshot {
+  productId: string;
+  quantityOnHand: number;
+  /** Weighted-average unit cost across all purchases received so far. */
+  avgUnitCostBrl: number;
+  reorderPoint: number;
+  updatedAt: string;
+}
+
+/** Output of the "trust analyst" agent — AI-written reasoning over a curated, already-computed trust tier/score. */
+export interface SupplierTrustAssessment {
+  leadId: string;
+  trustTier: TrustTier;
+  trustScore: number;
+  reasoning: string;
+}
+
+/** Output of the "inventory planner" agent for a stock-mode product. */
+export interface InventoryPlan {
+  reorderPoint: number;
+  reorderQuantity: number;
+  reasoning: string;
+}
+
+/**
+ * Result of running the full multi-agent onboarding pipeline for a chosen
+ * SourcingOption: sourcing (already done) -> trust assessment -> inventory
+ * plan (only when the suggested fulfillment isn't pure dropshipping). This
+ * is the "esteira" (conveyor belt) the user asked for — each stage is a
+ * distinct agent call, orchestrated by agentOrchestrator.ts.
+ */
+export interface OnboardingPipelineResult {
+  option: SourcingOption;
+  trustAssessment: SupplierTrustAssessment;
+  inventoryPlan: InventoryPlan | null;
+  aiProvider: string;
 }

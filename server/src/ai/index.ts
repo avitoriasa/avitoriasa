@@ -2,10 +2,14 @@ import { db } from "../db.js";
 import { AppSettings } from "../types.js";
 import {
   AIProvider,
+  AssessSupplierTrustInput,
+  AssessSupplierTrustOutput,
   ExplainRecommendationInput,
   ExplainRecommendationOutput,
   GenerateListingContentInput,
   GenerateListingContentOutput,
+  PlanInventoryInput,
+  PlanInventoryOutput,
   ResearchSuppliersInput,
   ResearchSuppliersOutput,
 } from "./AIProvider.js";
@@ -18,7 +22,9 @@ const heuristic = new HeuristicProvider();
  * Wraps the configured provider so that any failure (Ollama not running,
  * model not pulled, network error, malformed JSON) transparently falls
  * back to the heuristic provider instead of breaking the feature. The
- * result always reports which provider actually produced it.
+ * result always reports which provider actually produced it. Each AIProvider
+ * method delegates to `run`, which carries the shared try/primary-then/
+ * fallback-to-heuristic logic once instead of repeating it per method.
  */
 class ResilientAIProvider implements AIProvider {
   name: string;
@@ -27,40 +33,36 @@ class ResilientAIProvider implements AIProvider {
     this.name = primary.name;
   }
 
-  async explainRecommendation(input: ExplainRecommendationInput): Promise<ExplainRecommendationOutput> {
+  private async run<T>(methodName: string, call: (provider: AIProvider) => Promise<T>): Promise<T> {
     try {
-      const result = await this.primary.explainRecommendation(input);
+      const result = await call(this.primary);
       this.name = this.primary.name;
       return result;
     } catch (err) {
-      console.warn(`[ai] Provedor "${this.primary.name}" falhou (${(err as Error).message}); usando heurístico.`);
+      console.warn(`[ai] Provedor "${this.primary.name}" falhou em ${methodName} (${(err as Error).message}); usando heurístico.`);
       this.name = `${heuristic.name} (fallback de ${this.primary.name})`;
-      return heuristic.explainRecommendation(input);
+      return call(heuristic);
     }
   }
 
-  async generateListingContent(input: GenerateListingContentInput): Promise<GenerateListingContentOutput> {
-    try {
-      const result = await this.primary.generateListingContent(input);
-      this.name = this.primary.name;
-      return result;
-    } catch (err) {
-      console.warn(`[ai] Provedor "${this.primary.name}" falhou (${(err as Error).message}); usando heurístico.`);
-      this.name = `${heuristic.name} (fallback de ${this.primary.name})`;
-      return heuristic.generateListingContent(input);
-    }
+  explainRecommendation(input: ExplainRecommendationInput): Promise<ExplainRecommendationOutput> {
+    return this.run("explainRecommendation", (p) => p.explainRecommendation(input));
   }
 
-  async researchSuppliers(input: ResearchSuppliersInput): Promise<ResearchSuppliersOutput> {
-    try {
-      const result = await this.primary.researchSuppliers(input);
-      this.name = this.primary.name;
-      return result;
-    } catch (err) {
-      console.warn(`[ai] Provedor "${this.primary.name}" falhou (${(err as Error).message}); usando heurístico.`);
-      this.name = `${heuristic.name} (fallback de ${this.primary.name})`;
-      return heuristic.researchSuppliers(input);
-    }
+  generateListingContent(input: GenerateListingContentInput): Promise<GenerateListingContentOutput> {
+    return this.run("generateListingContent", (p) => p.generateListingContent(input));
+  }
+
+  researchSuppliers(input: ResearchSuppliersInput): Promise<ResearchSuppliersOutput> {
+    return this.run("researchSuppliers", (p) => p.researchSuppliers(input));
+  }
+
+  assessSupplierTrust(input: AssessSupplierTrustInput): Promise<AssessSupplierTrustOutput> {
+    return this.run("assessSupplierTrust", (p) => p.assessSupplierTrust(input));
+  }
+
+  planInventory(input: PlanInventoryInput): Promise<PlanInventoryOutput> {
+    return this.run("planInventory", (p) => p.planInventory(input));
   }
 }
 

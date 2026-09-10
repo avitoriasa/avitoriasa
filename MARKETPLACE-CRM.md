@@ -6,8 +6,9 @@ CRM para conectar seus produtos aos melhores marketplaces. O sistema:
 2. **Conecta o produto** ao marketplace escolhido (adapters mockados para Mercado Livre, Shopee, Amazon Brasil, Magazine Luiza, Shein, TikTok Shop e YouTube Shopping — prontos para receber credenciais reais), já calculando o preço de publicação a partir da taxa daquele marketplace.
 3. **Reotimiza continuamente** título, descrição e palavras-chave (SEO) de cada anúncio conectado, em ciclos automáticos, para evitar estagnação no ranking do marketplace.
 4. **Acompanha o financeiro** de cada produto/marketplace: vendas, taxa cobrada e repasse esperado (hoje simulado, pronto para ligar às APIs reais de pedidos de cada marketplace).
-5. **Pesquisa fornecedores de atacado automaticamente** (foco inicial: perfumes árabes e perfumes importados originais) via IA, ranqueando sempre pelo **menor custo total de importação** (produto + frete + impostos de referência) — não só o preço do produto no exterior —, com MOQ, prazo, margem estimada e uma calculadora de câmbio.
-6. **Funciona nos dois modelos**: compre no atacado e mantenha estoque (fluxo acima), ou faça **dropshipping** — compre unidade a unidade só depois que a venda acontece, sem estoque — para os casos de ticket alto e giro baixo que realmente compensam (tipicamente grifes originais).
+5. **Pesquisa fornecedores confiáveis de beleza automaticamente** (perfumaria, skincare, maquiagem, cabelo — com foco em produtos de marca) via IA, ranqueando sempre pelo **menor custo total de importação** (produto + frete + impostos de referência) e mostrando o **nível de confiança** de cada canal, com MOQ, prazo, margem estimada e uma calculadora de câmbio.
+6. **Funciona nos dois modelos, com dropshipping como padrão**: compre por pedido só depois que a venda acontece (sem comprar antes) — e, quando você preferir comprar no atacado e manter estoque, o **controle de estoques** entra automaticamente em ação.
+7. **Multiagentes de IA** rodam uma "esteira" por opção de fornecedor escolhida: um agente analisa a confiança do fornecedor e, se fizer sentido manter estoque, outro agente sugere o plano de reposição — cada agente usa o modelo configurado (heurístico ou Ollama/Llama).
 
 ## Estrutura
 
@@ -101,22 +102,33 @@ O que o CRM oferece é uma **visão financeira consolidada**, hoje simulada e pr
 - O scheduler já busca novos pedidos e amadurece repasses a cada ciclo; também dá para forçar uma venda simulada pelo botão **"Simular venda"** na tela do produto (ou `POST /api/connections/:id/orders/simulate`), útil para testar sem esperar o ciclo automático.
 - O resumo financeiro (bruto, taxas, pendente, repassado) aparece na tela do produto e no Dashboard.
 
-## Fornecedores (comprar no atacado para revender)
+## Fornecedores (beleza: perfumaria, skincare, maquiagem, cabelo)
 
-Tela **Fornecedores** (`client/src/pages/Sourcing.tsx`) para pesquisar canais de compra no atacado, hoje com foco em **perfumes árabes** e **perfumes importados originais**:
+Tela **Fornecedores** (`client/src/pages/Sourcing.tsx`) para pesquisar canais de compra confiáveis no ramo da beleza, com foco em produtos de marca:
 
-- `server/src/data/supplierLeads.ts` é uma lista curada de referência (marcas árabes de atacado direto como Lattafa, Ard Al Zaafaran, Rasasi, Swiss Arabian, Ajmal, Al Haramain, e linhas "inspired by" como Armaf/Paris Corner/Fragrance World, além de canais de importação paralela para grifes originais e plataformas B2B gerais como Alibaba/TradeKey) — **não é dado ao vivo/raspado**; os custos (incluindo frete de referência por unidade, `freightUsdPerUnit`) são faixas de referência para planejamento, sempre confirme preço/MOQ/autenticidade direto com o fornecedor antes de comprar.
-- `server/src/services/sourcingService.ts` filtra esse catálogo pela busca (a busca roda automaticamente ao abrir a tela, com a query "perfumes" cobrindo todos os nichos por padrão), converte o custo e o frete para BRL usando `settings.usdToBrlRate`, aplica a alíquota de referência `settings.importTaxPercent` (II+IPI+PIS/COFINS+ICMS) para chegar no **custo total de importação por unidade** (`landedCostBrlMin/Max`), calcula a margem estimada sobre esse custo total se você informar um preço de venda pretendido, e pede à IA (`AIProvider.researchSuppliers`) apenas a análise em texto — os números vêm sempre do catálogo curado, a IA nunca inventa fornecedor ou preço.
+- `server/src/data/supplierLeads.ts` é uma lista curada de referência — hoje com marcas próprias de atacado direto (perfumaria árabe como Lattafa/Ard Al Zaafaran/Rasasi/Swiss Arabian/Ajmal/Al Haramain, linhas "inspired by" como Armaf/Paris Corner/Fragrance World, K-beauty como COSRX/Anua/Beauty of Joseon), canais de **importação paralela de marcas originais** (perfumes de grife, skincare/haircare profissional, maquiagem ocidental) e plataformas B2B gerais (Alibaba/TradeKey) — **não é dado ao vivo/raspado**; os custos (incluindo frete de referência por unidade, `freightUsdPerUnit`) são faixas de referência, sempre confirme preço/MOQ/autenticidade direto com o fornecedor antes de comprar.
+- Cada fornecedor tem uma **categoria** (`perfumes`/`skincare`/`maquiagem`/`cabelo`/`beleza_geral`), um **nicho** (`marca_propria_atacado`, `importados_originais_marca` ou `geral_b2b`) e um **nível de confiança curado** (`trustTier`: verificado/referência/alerta, `trustScore` 0-100, `trustSignals`: motivos concretos) — é assim que "meus importadores precisam ser de confiança" fica visível na busca, não só uma nota de risco solta.
+- `server/src/services/sourcingService.ts` filtra esse catálogo pela busca (roda automaticamente ao abrir a tela, com a query "beleza" cobrindo todas as categorias por padrão — use os filtros rápidos ou digite "skincare"/"maquiagem"/"cabelo"/"perfumes" para restringir), converte o custo e o frete para BRL usando `settings.usdToBrlRate`, aplica a alíquota de referência `settings.importTaxPercent` para chegar no **custo total de importação por unidade** (`landedCostBrlMin/Max`), calcula a margem estimada sobre esse custo total se você informar um preço de venda pretendido, e pede à IA (`AIProvider.researchSuppliers`) apenas a análise em texto — os números vêm sempre do catálogo curado, a IA nunca inventa fornecedor, preço ou nível de confiança.
 - **A ordenação é sempre automática pelo menor custo total de importação** (não pelo menor preço de produto isoladamente) — é a opção marcada como "Menor custo total" na tela.
+- **Meus fornecedores confiáveis**: além do catálogo de referência, você mantém sua própria lista (`TrustedSupplier`, `server/src/services/trustedSupplierService.ts`) — "Salvar como confiável" em qualquer opção da busca, ou cadastre a mão via API. É separada do catálogo curado de propósito: é a sua palavra final sobre quem você confia.
 - Uma **calculadora de câmbio** de referência compara o custo total pagando o fornecedor por diferentes métodos (conta PJ internacional, remessa bancária, cartão corporativo, carta de crédito), usando spreads típicos (`server/src/data/fxMethods.ts`) — troque por cotações reais da sua fintech/banco quando for pagar de verdade.
-- Um botão em cada opção ("Usar esta opção para criar produto") pré-preenche o formulário de novo produto com nome, categoria, custo de aquisição (o custo total de importação médio) e palavras-chave, fechando o ciclo: pesquisar fornecedor → cadastrar produto com custo → ver recomendação de marketplace e margem → conectar e vender.
-- A tela também traz um checklist informativo (não é aconselhamento jurídico/tributário) sobre importação comercial de perfumes no Brasil: CNPJ + habilitação no Radar Siscomex, Autorização de Funcionamento (AFE) da Anvisa, classificação NCM 3303, e tributos sobre o valor aduaneiro (II, IPI, PIS/COFINS monofásico, ICMS) — bem diferente do regime simplificado de compras de pessoa física ("remessa conforme"), que não vale para importação comercial em volume.
+- Um botão em cada opção ("Usar esta opção para criar produto") pré-preenche o formulário de novo produto com nome, categoria, custo de aquisição (o custo total de importação médio), modo de venda sugerido (dropshipping ou estoque) e palavras-chave, fechando o ciclo: pesquisar fornecedor → cadastrar produto com custo → ver recomendação de marketplace e margem → conectar e vender.
+- A tela também traz um checklist informativo (não é aconselhamento jurídico/tributário) sobre importação comercial de produtos de beleza no Brasil: CNPJ + habilitação no Radar Siscomex, Autorização de Funcionamento (AFE) da Anvisa, classificação NCM (3303 perfumes; 3304/3305 skincare/maquiagem/cabelo), e tributos sobre o valor aduaneiro (II, IPI, PIS/COFINS monofásico, ICMS) — bem diferente do regime simplificado de compras de pessoa física ("remessa conforme"), que não vale para importação comercial em volume.
 
-Para extrapolar para outros nichos além de perfumes: adicione mais entradas a `supplierLeads.ts` (ou troque o módulo por uma integração real com uma API de sourcing B2B) — o resto do fluxo não muda.
+Para extrapolar para outras categorias: adicione mais entradas a `supplierLeads.ts` (ou troque o módulo por uma integração real com uma API de sourcing B2B) — o resto do fluxo não muda.
+
+## Multiagentes de IA (a "esteira" de onboarding)
+
+Botão **"Rodar esteira (IA)"** em cada opção da busca de fornecedores dispara um pipeline multiagente (`server/src/services/agentOrchestrator.ts`), usando o provedor de IA configurado (heurístico por padrão, ou um modelo Ollama/Llama quando configurado em Configurações):
+
+1. **Agente de confiança** (`AIProvider.assessSupplierTrust`) — recebe o `trustTier`/`trustScore`/`trustSignals` já curados e escreve uma recomendação prática de como agir; não pode mudar o nível nem inventar uma pontuação.
+2. **Agente de estoque** (`AIProvider.planInventory`) — só roda quando a opção não é puramente indicada para dropshipping. `reorderPoint`/`reorderQuantity` são calculados deterministicamente a partir do MOQ e do prazo de entrega do fornecedor; o agente só explica o plano.
+
+Cada agente recebe apenas os números que precisa e nunca os recalcula — o mesmo padrão usado em `researchSuppliers`/`explainRecommendation`/`generateListingContent`. Isso significa que trocar o modelo (heurístico ↔ Ollama/Llama ↔ outro modelo) muda a qualidade do texto explicativo, nunca os números que embasam a decisão.
 
 ## Estoque x Dropshipping
 
-Cada produto tem um `fulfillmentMode`: `"stock"` (compra no atacado, guarda estoque, você mesmo despacha — o fluxo de Sourcing acima) ou `"dropship"` (sem estoque: cada pedido é comprado individualmente só depois que a venda acontece, e enviado direto ao cliente final).
+Cada produto tem um `fulfillmentMode`: `"dropship"` (padrão — sem estoque: cada pedido é comprado individualmente só depois que a venda acontece, e enviado direto ao cliente final; é o modelo priorizado, cortando a etapa de "comprar primeiro para depois vender") ou `"stock"` (compra no atacado, guarda estoque, você mesmo despacha — e aí o **controle de estoques** abaixo entra em ação automaticamente).
 
 - **Sugestão automática**: `sourcingService.ts` calcula um `suggestedFulfillment` ("estoque", "dropshipping" ou "ambos") por opção de fornecedor, a partir do MOQ e do nicho — MOQ baixo (≤25) + grife original tende a "dropshipping" (menos capital preso, evita comprar 12-24 unidades de um item caro e sensível a autenticidade); MOQ alto favorece "estoque". Ao clicar em "Usar esta opção para criar produto", o modo já vem pré-selecionado de acordo.
 - **Regime tributário diferente**: import comercial em volume (estoque) usa o regime formal (CNPJ + Radar Siscomex + Anvisa + II/IPI/PIS-COFINS/ICMS sobre valor aduaneiro). Dropshipping — uma remessa por vez, endereçada direto ao cliente final — cai no regime simplificado de **remessa individual** (o mesmo do consumidor comum): II isento até US$ 50 via plataforma "Remessa Conforme", ICMS sempre incide. `server/src/services/dropshipService.ts` modela esse segundo regime (`estimateDropshipOrder`), separado do `importTaxPercent` usado para estoque — ver `settings.remessaIcmsPercent`, editável em Configurações.
@@ -124,6 +136,21 @@ Cada produto tem um `fulfillmentMode`: `"stock"` (compra no atacado, guarda esto
 - **Achar o menor preço de varejo**: este app não tem integração automática com ferramentas de cupom/cashback — a [Honey](https://www.joinhoney.com) (extensão de navegador da PayPal) não expõe uma API pública para consulta programática de preços, então isso continua manual: você mesmo confere o menor preço com cupom antes de registrar a compra no pedido.
 - **Rastreio de pedidos**: cada `Order` pode guardar `trackingCarrier`/`trackingNumber`. Para a transportadora `"USPS"`, o sistema já gera o link público de rastreio (`https://tools.usps.com/go/TrackConfirmAction?tLabels=<código>`, o mesmo formato do [rastreador oficial](https://tools.usps.com/tracking/)) — sem precisar de API key. Isso é só o link da página pública; consultar o status via API exige credenciais nas novas **USPS APIs** (o antigo Web Tools API foi desativado em 25/01/2026) — troque `ordersService.getTrackingUrl`/adicione um adapter de tracking quando for automatizar isso.
 - **Lucro por pedido**: ao registrar o custo pago na fonte + imposto estimado de um pedido dropship (`PUT /api/orders/:id/dropship-purchase`), o sistema calcula `dropshipProfitBrl = líquido do marketplace − custo na fonte − imposto`, visível na tela do produto.
+
+## Controle de estoques
+
+Só existe para produtos em modo `"stock"` — quando você decide comprar antes para revender. Tela **Estoque** no menu (visão de todos os produtos com estoque) + uma seção dedicada na página de cada produto (registrar compra, ajustar por contagem física, definir ponto de reposição, ver o histórico de movimentações).
+
+- `server/src/domain/InventoryItem.ts` é a entidade de domínio (sem nenhuma dependência de Express/JSON) que garante as regras do estoque por conta própria: a quantidade nunca fica negativa, e o custo médio é sempre recalculado como **média ponderada** a cada compra recebida — nunca editado à mão. `receivePurchase`, `releaseForSale` e `adjustQuantity` são os únicos jeitos de mudar o saldo, e cada um valida sua própria regra antes de aplicar a mudança.
+- `server/src/services/inventoryRepository.ts` é a camada de infraestrutura: só ela sabe que a persistência é um arquivo JSON, traduzindo entre a entidade e o formato salvo (`InventoryItemSnapshot`).
+- `server/src/services/inventoryService.ts` é a camada de aplicação (casos de uso): `recordStockPurchase`, `consumeStockForSale`, `adjustStock`, `setReorderPoint`. Uma compra de estoque também atualiza `Product.costBasis` para o novo custo médio, mantendo a margem exibida no produto sempre correta.
+- Toda venda de um produto em modo `"stock"` decrementa o estoque automaticamente (`ordersService.ts` chama `consumeStockForSale` ao registrar cada pedido) — se o saldo for insuficiente, a venda é registrada mas o estoque não fica negativo (fica um aviso no log do servidor); produtos em dropshipping não têm registro de estoque, então nada acontece para eles.
+
+## Arquitetura (DDD e por que só nos módulos novos)
+
+Os módulos adicionados nesta rodada (estoque, fornecedores confiáveis, agentes) seguem DDD de propósito: **domínio** (entidade com invariantes, sem dependência de framework) → **aplicação** (casos de uso que orquestram a entidade + repositório) → **infraestrutura** (tradução para o armazenamento JSON) → **rotas** (adaptador HTTP fino). `InventoryItem` é o exemplo mais claro disso.
+
+Isso **não foi aplicado retroativamente** ao resto do código (produtos, marketplaces, precificação, SEO, pedidos) — reescrever tudo isso em DDD "puro" agora seria um projeto à parte, com risco real de quebrar o que já funciona, sem necessidade imediata (esses módulos já são bem separados em camadas rotas → serviços → dados, só não isolam a entidade de domínio da persistência da mesma forma). Se fizer sentido continuar a migração depois, o padrão a seguir é o de `inventory/`: extrair a entidade com suas regras para `domain/`, o acesso a dados para um repositório dedicado, e deixar o `service` atual como a camada de aplicação por cima disso.
 
 ## Otimização automática (SEO sempre em evolução)
 
@@ -156,3 +183,11 @@ Também é possível disparar manualmente:
 | POST | `/api/sourcing/dropship-estimate` | estimar custo total de uma compra dropship pontual |
 | PUT | `/api/orders/:id/tracking` | salvar transportadora/código de rastreio de um pedido |
 | PUT | `/api/orders/:id/dropship-purchase` | registrar custo/imposto pago e calcular lucro de um pedido dropship |
+| GET/POST/DELETE | `/api/trusted-suppliers` | listar/salvar/remover fornecedores da sua lista de confiança |
+| POST | `/api/agents/onboard` | rodar a esteira multiagente (confiança + plano de estoque) para uma opção de fornecedor |
+| GET | `/api/inventory` | visão geral do estoque de todos os produtos em modo "stock" |
+| GET | `/api/products/:id/inventory` | saldo de estoque de um produto |
+| GET | `/api/products/:id/inventory/movements` | histórico de movimentações de estoque |
+| POST | `/api/products/:id/inventory/purchase` | registrar entrada de estoque (compra) |
+| POST | `/api/products/:id/inventory/adjust` | ajustar estoque manualmente (contagem física) |
+| PUT | `/api/products/:id/inventory/reorder-point` | definir o ponto de reposição |

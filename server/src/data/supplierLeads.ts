@@ -1,22 +1,26 @@
 import { SupplierLead } from "../types.js";
 
 /**
- * Curated reference list of sourcing channels for perfume resale — NOT live
- * or scraped data. Costs (including freightUsdPerUnit) are typical reference
- * ranges for informational planning only; always confirm current price, MOQ,
- * freight and payment terms directly with the supplier before buying, and
- * validate authenticity / distribution rights before importing "perfumes
- * importados originais".
+ * Curated reference list of sourcing channels for beauty resale (perfumes,
+ * skincare, makeup, hair care) — NOT live or scraped data. Costs (including
+ * freightUsdPerUnit) are typical reference ranges for informational planning
+ * only; trustTier/trustScore/trustSignals are a hand-curated judgment call
+ * about how reliable/authentic the channel is, not a live vetting service.
+ * Always confirm current price, MOQ, freight, payment terms and — above all
+ * for "importados_originais_marca" entries — authenticity, directly with the
+ * supplier before buying.
  *
- * To extend: add entries here, or replace this module with a real call to
- * a B2B sourcing API / your own supplier database — sourcingService.ts only
+ * To extend: add entries here, or replace this module with a real call to a
+ * B2B sourcing API / your own supplier database — sourcingService.ts only
  * depends on the SupplierLead shape.
  */
 export const SUPPLIER_LEADS: SupplierLead[] = [
+  // --- Perfumaria: marca própria (atacado direto) ---
   {
     id: "lattafa",
     name: "Lattafa Perfumes (atacado direto/distribuidor)",
-    niche: "perfumes_arabes",
+    niche: "marca_propria_atacado",
+    category: "perfumes",
     channel: "Site oficial de atacado / Alibaba.com (fornecedor verificado)",
     country: "Emirados Árabes Unidos",
     unitCostUsdMin: 4,
@@ -27,11 +31,15 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     riskNotes:
       "Marca própria registrada — sem risco de falsificação. Exija fatura comercial detalhada (para o desembaraço na Receita Federal) e verifique se o fornecedor tem histórico no Alibaba (Trade Assurance) ou é distribuidor oficial listado no site da marca.",
     productExamples: ["Khamrah", "Yara", "Fakhar", "Asad"],
+    trustTier: "verificado",
+    trustScore: 90,
+    trustSignals: ["Marca própria registrada", "Distribuidor oficial listado no site da marca", "Histórico consolidado no Alibaba"],
   },
   {
     id: "ard-al-zaafaran",
     name: "Ard Al Zaafaran (atacado direto/distribuidor)",
-    niche: "perfumes_arabes",
+    niche: "marca_propria_atacado",
+    category: "perfumes",
     channel: "Site oficial de atacado / TradeKey",
     country: "Emirados Árabes Unidos",
     unitCostUsdMin: 5,
@@ -41,11 +49,15 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     leadTimeDays: 28,
     riskNotes: "Marca própria — baixo risco de autenticidade. Confirme incoterm (FOB/CIF) antes de fechar pedido.",
     productExamples: ["Zafeer", "Amber Oud", "Ameer Al Oudh"],
+    trustTier: "verificado",
+    trustScore: 85,
+    trustSignals: ["Marca própria registrada", "Distribuidor oficial de atacado"],
   },
   {
     id: "al-haramain",
     name: "Al Haramain Perfumes (atacado direto/distribuidor)",
-    niche: "perfumes_arabes",
+    niche: "marca_propria_atacado",
+    category: "perfumes",
     channel: "Site oficial de atacado / distribuidor regional",
     country: "Emirados Árabes Unidos / Omã",
     unitCostUsdMin: 5,
@@ -55,11 +67,15 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     leadTimeDays: 30,
     riskNotes: "Marca com décadas no mercado — baixo risco. Linhas de oud puro têm custo bem mais alto que eau de parfum.",
     productExamples: ["L'Aventure", "Amber Oud", "Junoon"],
+    trustTier: "verificado",
+    trustScore: 88,
+    trustSignals: ["Marca própria com décadas de mercado", "Distribuidor oficial regional"],
   },
   {
     id: "swiss-arabian",
     name: "Swiss Arabian (atacado direto/distribuidor)",
-    niche: "perfumes_arabes",
+    niche: "marca_propria_atacado",
+    category: "perfumes",
     channel: "Site oficial de atacado / distribuidor regional",
     country: "Emirados Árabes Unidos",
     unitCostUsdMin: 6,
@@ -69,11 +85,15 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     leadTimeDays: 30,
     riskNotes: "Uma das marcas árabes mais tradicionais — baixo risco de autenticidade.",
     productExamples: ["Shaghaf Oud", "Layali Al Emarat"],
+    trustTier: "verificado",
+    trustScore: 88,
+    trustSignals: ["Marca própria tradicional", "Distribuidor oficial regional"],
   },
   {
     id: "ajmal",
     name: "Ajmal Perfumes (atacado direto/distribuidor)",
-    niche: "perfumes_arabes",
+    niche: "marca_propria_atacado",
+    category: "perfumes",
     channel: "Site oficial de atacado / distribuidor regional",
     country: "Emirados Árabes Unidos / Índia",
     unitCostUsdMin: 8,
@@ -83,11 +103,15 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     leadTimeDays: 30,
     riskNotes: "Marca premium do segmento — ticket de entrada mais alto, margem por unidade também maior.",
     productExamples: ["Dahn Al Oudh", "Wisal", "Amber Wood"],
+    trustTier: "verificado",
+    trustScore: 85,
+    trustSignals: ["Marca própria premium consolidada", "Distribuidor oficial regional"],
   },
   {
     id: "rasasi",
     name: "Rasasi (atacado direto/distribuidor)",
-    niche: "perfumes_arabes",
+    niche: "marca_propria_atacado",
+    category: "perfumes",
     channel: "Site oficial de atacado / TradeKey",
     country: "Emirados Árabes Unidos",
     unitCostUsdMin: 5,
@@ -97,11 +121,15 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     leadTimeDays: 25,
     riskNotes: "Marca própria — baixo risco. Boa relação custo x reconhecimento de marca no Brasil.",
     productExamples: ["Hawas", "Chrome", "La Yuqawam"],
+    trustTier: "verificado",
+    trustScore: 85,
+    trustSignals: ["Marca própria registrada", "Boa reputação no mercado brasileiro"],
   },
   {
     id: "armaf",
     name: "Armaf / Sterling Parfums (linhas \"inspired by\")",
-    niche: "perfumes_arabes",
+    niche: "marca_propria_atacado",
+    category: "perfumes",
     channel: "Site oficial de atacado / Alibaba.com",
     country: "Emirados Árabes Unidos",
     unitCostUsdMin: 4,
@@ -112,11 +140,15 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     riskNotes:
       "Perfumes \"inspirados em\" (mesma família olfativa de grifes, nome e frasco próprios) — legalmente distinto de falsificação, mas deixe isso claro na sua loja para não confundir o cliente sobre a marca.",
     productExamples: ["Club de Nuit", "Odyssey", "Tres Nuit"],
+    trustTier: "verificado",
+    trustScore: 80,
+    trustSignals: ["Marca própria registrada (não é falsificação)", "Transparência exigida na loja sobre ser \"inspirado em\""],
   },
   {
     id: "paris-corner",
     name: "Paris Corner (linhas \"inspired by\")",
-    niche: "perfumes_arabes",
+    niche: "marca_propria_atacado",
+    category: "perfumes",
     channel: "Site oficial de atacado / TradeKey",
     country: "Emirados Árabes Unidos",
     unitCostUsdMin: 3,
@@ -126,11 +158,15 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     leadTimeDays: 25,
     riskNotes: "Ticket de entrada baixo, bom para testar giro rápido antes de subir para linhas premium.",
     productExamples: ["Bade'e Al Oud", "Hamasa"],
+    trustTier: "referencia",
+    trustScore: 70,
+    trustSignals: ["Marca própria registrada", "Catálogo amplo, menos histórico de marca que os líderes do segmento"],
   },
   {
     id: "fragrance-world",
     name: "Fragrance World (linhas \"inspired by\")",
-    niche: "perfumes_arabes",
+    niche: "marca_propria_atacado",
+    category: "perfumes",
     channel: "Site oficial de atacado / Alibaba.com",
     country: "Emirados Árabes Unidos",
     unitCostUsdMin: 4,
@@ -140,11 +176,17 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     leadTimeDays: 25,
     riskNotes: "Catálogo grande de réplicas olfativas de grifes — confira sempre a concentração (EDP x EDT) anunciada.",
     productExamples: ["Le Chameau", "Blueberry Musk"],
+    trustTier: "referencia",
+    trustScore: 68,
+    trustSignals: ["Marca própria registrada", "Confirme concentração/lote anunciados antes de fechar"],
   },
+
+  // --- Perfumaria/beleza: grifes originais via mercado paralelo (alto risco) ---
   {
     id: "parallel-import-eu",
     name: "Distribuidor paralelo europeu (parallel import de grifes)",
-    niche: "perfumes_importados_originais",
+    niche: "importados_originais_marca",
+    category: "perfumes",
     channel: "Distribuidor paralelo / outlet de grife (fora da rede oficial da marca)",
     country: "União Europeia (variável)",
     unitCostUsdMin: 25,
@@ -155,11 +197,19 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     riskNotes:
       "Risco alto: marcas de luxo (Chanel, Dior, YSL etc.) usam distribuição seletiva e não vendem atacado a qualquer revendedor. Exija nota fiscal/invoice com lote rastreável, confirme se o fornecedor tem CNPJ/registro comercial verificável, e desconfie de preço muito abaixo do praticado por distribuidores autorizados — é o principal sinal de produto falsificado ou 'tester' não destinado à venda.",
     productExamples: ["Linhas EDT/EDP de grifes ocidentais variadas"],
+    trustTier: "alerta",
+    trustScore: 35,
+    trustSignals: [
+      "Distribuição seletiva da marca não autoriza este canal formalmente",
+      "Exija nota fiscal com lote rastreável",
+      "Risco de produto não destinado à venda (tester)",
+    ],
   },
   {
     id: "outlet-liquidation-us",
     name: "Outlet/liquidação de estoque (EUA)",
-    niche: "perfumes_importados_originais",
+    niche: "importados_originais_marca",
+    category: "perfumes",
     channel: "Liquidação de estoque / closeout — verificar autenticidade caso a caso",
     country: "Estados Unidos",
     unitCostUsdMin: 20,
@@ -170,11 +220,117 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     riskNotes:
       "Mesmo alerta do distribuidor paralelo: valide autenticidade, embalagem original e validade antes de comprar em volume.",
     productExamples: ["Estoque variado de grifes ocidentais"],
+    trustTier: "alerta",
+    trustScore: 30,
+    trustSignals: ["Origem de liquidação (closeout) — validar autenticidade caso a caso", "Sem vínculo oficial com a marca"],
   },
+
+  // --- Skincare (K-beauty: marca própria) ---
+  {
+    id: "cosrx-wholesale",
+    name: "COSRX (atacado direto/distribuidor)",
+    niche: "marca_propria_atacado",
+    category: "skincare",
+    channel: "Distribuidor oficial de atacado (Coreia do Sul) / Alibaba.com",
+    country: "Coreia do Sul",
+    unitCostUsdMin: 3,
+    unitCostUsdMax: 9,
+    freightUsdPerUnit: 2.5,
+    moq: 60,
+    leadTimeDays: 25,
+    riskNotes: "Marca própria registrada, forte reconhecimento em skincare coreano — baixo risco de autenticidade.",
+    productExamples: ["Advanced Snail 96 Mucin Power Essence", "AHA/BHA Clarifying Treatment Toner"],
+    trustTier: "verificado",
+    trustScore: 84,
+    trustSignals: ["Marca própria registrada", "Distribuidor oficial de atacado", "Alta demanda comprovada no Brasil"],
+  },
+  {
+    id: "anua-wholesale",
+    name: "Anua (atacado direto/distribuidor)",
+    niche: "marca_propria_atacado",
+    category: "skincare",
+    channel: "Distribuidor oficial de atacado (Coreia do Sul)",
+    country: "Coreia do Sul",
+    unitCostUsdMin: 4,
+    unitCostUsdMax: 10,
+    freightUsdPerUnit: 2.5,
+    moq: 50,
+    leadTimeDays: 28,
+    riskNotes: "Marca própria em forte crescimento global — baixo risco de autenticidade.",
+    productExamples: ["Heartleaf 77% Soothing Toner", "Peach 70 Niacinamide Serum"],
+    trustTier: "verificado",
+    trustScore: 82,
+    trustSignals: ["Marca própria registrada", "Distribuidor oficial de atacado"],
+  },
+  {
+    id: "beauty-of-joseon-wholesale",
+    name: "Beauty of Joseon (atacado direto/distribuidor)",
+    niche: "marca_propria_atacado",
+    category: "skincare",
+    channel: "Distribuidor oficial de atacado (Coreia do Sul)",
+    country: "Coreia do Sul",
+    unitCostUsdMin: 3,
+    unitCostUsdMax: 8,
+    freightUsdPerUnit: 2.5,
+    moq: 50,
+    leadTimeDays: 28,
+    riskNotes: "Marca própria, alta demanda global — baixo risco de autenticidade.",
+    productExamples: ["Glow Deep Serum", "Relief Sun Rice + Probiotics"],
+    trustTier: "verificado",
+    trustScore: 82,
+    trustSignals: ["Marca própria registrada", "Distribuidor oficial de atacado"],
+  },
+
+  // --- Skincare/Cabelo: marcas originais via mercado paralelo (alto risco) ---
+  {
+    id: "parallel-import-prestige-skincare-haircare",
+    name: "Distribuidor paralelo de skincare/haircare premium",
+    niche: "importados_originais_marca",
+    category: "cabelo",
+    channel: "Distribuidor paralelo (fora da rede autorizada da marca)",
+    country: "União Europeia / Estados Unidos (variável)",
+    unitCostUsdMin: 15,
+    unitCostUsdMax: 40,
+    freightUsdPerUnit: 4,
+    moq: 24,
+    leadTimeDays: 15,
+    riskNotes:
+      "Risco alto: linhas profissionais (ex.: Kérastase, Olaplex, L'Oréal Professionnel) costumam ter distribuição exclusiva a salões/distribuidores autorizados — vender fora dessa rede pode violar a política comercial da marca, mesmo sem ser produto falsificado. Exija nota fiscal com lote rastreável e confirme prazo de validade.",
+    productExamples: ["Linhas profissionais de skincare/haircare variadas"],
+    trustTier: "alerta",
+    trustScore: 35,
+    trustSignals: [
+      "Distribuição exclusiva a salões/distribuidores autorizados",
+      "Exija nota fiscal com lote rastreável",
+      "Confirme prazo de validade do lote",
+    ],
+  },
+  {
+    id: "makeup-parallel-import-us",
+    name: "Atacadista de liquidação de maquiagem (marcas ocidentais)",
+    niche: "importados_originais_marca",
+    category: "maquiagem",
+    channel: "Liquidação de estoque / closeout dos EUA",
+    country: "Estados Unidos",
+    unitCostUsdMin: 5,
+    unitCostUsdMax: 18,
+    freightUsdPerUnit: 4,
+    moq: 24,
+    leadTimeDays: 14,
+    riskNotes:
+      "Marcas de massa (ex.: e.l.f., NYX) circulam mais em liquidação legítima do que marcas de luxo, mas ainda assim confira validade, lote e se a embalagem é a versão vendida no varejo (não tester).",
+    productExamples: ["Bases, paletas e batons de marcas ocidentais variadas"],
+    trustTier: "referencia",
+    trustScore: 55,
+    trustSignals: ["Marcas de massa com liquidação mais comum", "Confirme validade e se não é 'tester'"],
+  },
+
+  // --- B2B geral (todas as categorias de beleza) ---
   {
     id: "alibaba-b2b",
     name: "Alibaba.com (busca geral B2B)",
     niche: "geral_b2b",
+    category: "beleza_geral",
     channel: "Marketplace B2B com Trade Assurance",
     country: "Variável (majoritariamente China/Emirados Árabes Unidos)",
     unitCostUsdMin: 3,
@@ -183,12 +339,16 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     moq: 50,
     leadTimeDays: 25,
     riskNotes: "Use Trade Assurance e peça amostra antes de comprar em volume; filtre por 'Verified Supplier'.",
-    productExamples: ["Perfumaria em geral, private label"],
+    productExamples: ["Perfumaria, skincare e maquiagem em geral, private label"],
+    trustTier: "referencia",
+    trustScore: 60,
+    trustSignals: ["Trade Assurance disponível", "Filtro 'Verified Supplier'", "Peça amostra antes de comprar em volume"],
   },
   {
     id: "tradekey-b2b",
     name: "TradeKey (busca geral B2B)",
     niche: "geral_b2b",
+    category: "beleza_geral",
     channel: "Marketplace B2B Oriente Médio/Ásia",
     country: "Variável (forte em Emirados Árabes Unidos)",
     unitCostUsdMin: 3,
@@ -197,6 +357,9 @@ export const SUPPLIER_LEADS: SupplierLead[] = [
     moq: 50,
     leadTimeDays: 28,
     riskNotes: "Menos garantias de transação que o Alibaba — priorize fornecedores com anos de cadastro e referências.",
-    productExamples: ["Perfumaria árabe em geral"],
+    productExamples: ["Beleza em geral (perfumaria, skincare, maquiagem)"],
+    trustTier: "referencia",
+    trustScore: 50,
+    trustSignals: ["Priorize fornecedores com anos de cadastro", "Peça referências antes de comprar em volume"],
   },
 ];

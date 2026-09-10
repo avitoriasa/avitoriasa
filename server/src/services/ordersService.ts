@@ -1,6 +1,7 @@
 import { v4 as uuid } from "uuid";
 import { getMarketplaceAdapter } from "../adapters/MarketplaceAdapter.js";
 import { db } from "../db.js";
+import { consumeStockForSale } from "./inventoryService.js";
 import { FinancialSummary, Marketplace, Order, ProductMarketplaceConnection } from "../types.js";
 
 const PAYOUT_DELAY_DAYS = 14; // typical marketplace settlement window (varies by real API)
@@ -62,6 +63,16 @@ export async function collectOrdersForConnection(
 
   store.orders.push(...newOrders);
   await db.save();
+
+  // Each order represents one unit sold — for "stock" products that means
+  // decrementing real inventory (a no-op for dropship products, which carry
+  // no inventory record at all).
+  if (product?.fulfillmentMode === "stock") {
+    for (const order of newOrders) {
+      await consumeStockForSale(order.productId, 1);
+    }
+  }
+
   return newOrders;
 }
 

@@ -4,13 +4,17 @@ import type {
   FinancialSummary,
   FulfillmentMode,
   FxMethod,
+  InventorySummary,
   Marketplace,
+  OnboardingPipelineResult,
   OptimizationLogEntry,
   Order,
   Product,
   ProductMarketplaceConnection,
   RecommendationResult,
   SourcingResearchResult,
+  StockMovement,
+  TrustedSupplier,
 } from "../types/domain";
 
 export interface ProductInput {
@@ -107,5 +111,35 @@ export const api = {
     request<Order>(`/orders/${orderId}/dropship-purchase`, {
       method: "PUT",
       body: JSON.stringify({ sourcePurchaseCostBrl, sourceTaxEstimateBrl }),
+    }),
+
+  listTrustedSuppliers: () => request<TrustedSupplier[]>("/trusted-suppliers"),
+  addTrustedSupplier: (payload: Omit<TrustedSupplier, "id" | "addedAt">) =>
+    request<TrustedSupplier>("/trusted-suppliers", { method: "POST", body: JSON.stringify(payload) }),
+  removeTrustedSupplier: (id: string) => request<void>(`/trusted-suppliers/${id}`, { method: "DELETE" }),
+
+  runOnboardingPipeline: (leadId: string, desiredResalePrice?: number) =>
+    request<OnboardingPipelineResult>("/agents/onboard", {
+      method: "POST",
+      body: JSON.stringify({ leadId, desiredResalePrice }),
+    }),
+
+  listInventory: () => request<InventorySummary[]>("/inventory"),
+  getProductInventory: (productId: string) => request<InventorySummary>(`/products/${productId}/inventory`),
+  getInventoryMovements: (productId: string) => request<StockMovement[]>(`/products/${productId}/inventory/movements`),
+  recordStockPurchase: (productId: string, quantity: number, unitCostBrl: number, note?: string) =>
+    request<InventorySummary>(`/products/${productId}/inventory/purchase`, {
+      method: "POST",
+      body: JSON.stringify({ quantity, unitCostBrl, note }),
+    }),
+  adjustStock: (productId: string, quantity: number, reason: string) =>
+    request<InventorySummary>(`/products/${productId}/inventory/adjust`, {
+      method: "POST",
+      body: JSON.stringify({ quantity, reason }),
+    }),
+  setReorderPoint: (productId: string, reorderPoint: number) =>
+    request<InventorySummary>(`/products/${productId}/inventory/reorder-point`, {
+      method: "PUT",
+      body: JSON.stringify({ reorderPoint }),
     }),
 };

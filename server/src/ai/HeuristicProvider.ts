@@ -1,9 +1,13 @@
 import {
   AIProvider,
+  AssessSupplierTrustInput,
+  AssessSupplierTrustOutput,
   ExplainRecommendationInput,
   ExplainRecommendationOutput,
   GenerateListingContentInput,
   GenerateListingContentOutput,
+  PlanInventoryInput,
+  PlanInventoryOutput,
   ResearchSuppliersInput,
   ResearchSuppliersOutput,
 } from "./AIProvider.js";
@@ -137,14 +141,34 @@ export class HeuristicProvider implements AIProvider {
             ? "viável tanto manter estoque quanto comprar por pedido (dropshipping)"
             : "MOQ compensa manter estoque (compra única, revenda ao longo do tempo)"
       );
+      parts.push(`confiança: ${option.trustTier} (${option.trustScore}/100)`);
       reasoningByLeadId[option.leadId] = `${option.name}: ${parts.join(", ")}.`;
     }
 
-    const hasOriginalImports = input.options.some((o) => o.niche === "perfumes_importados_originais");
+    const hasOriginalImports = input.options.some((o) => o.niche === "importados_originais_marca");
     const summary = hasOriginalImports
-      ? `Para "${input.query}": ranqueado automaticamente pelo menor custo total de importação (produto + frete + impostos de referência) — hoje "${cheapest?.name}". Canais de marca própria árabe (Lattafa, Ard Al Zaafaran, Rasasi e similares) têm menor risco e ticket de entrada mais baixo. Canais de grife original (importação paralela) têm custo total maior e risco de autenticidade — exija nota fiscal rastreável e desconfie de preço muito abaixo do praticado por distribuidores oficiais.`
+      ? `Para "${input.query}": ranqueado automaticamente pelo menor custo total de importação (produto + frete + impostos de referência) — hoje "${cheapest?.name}". Canais de marca própria (own-brand direto do fabricante) têm menor risco e ticket de entrada mais baixo. Canais de grife original (importação paralela) têm custo total maior e risco de autenticidade — exija nota fiscal rastreável e desconfie de preço muito abaixo do praticado por distribuidores oficiais.`
       : `Para "${input.query}": ranqueado automaticamente pelo menor custo total de importação (produto + frete + impostos de referência) — hoje "${cheapest?.name}". Priorize fornecedores de marca própria (menor risco de autenticidade) e negocie o MOQ mínimo para validar o giro antes de comprar em volume maior.`;
 
     return { summary, reasoningByLeadId };
+  }
+
+  async assessSupplierTrust(input: AssessSupplierTrustInput): Promise<AssessSupplierTrustOutput> {
+    const signals = input.trustSignals.length ? input.trustSignals.join("; ") : "sem sinais adicionais cadastrados";
+    const verdict =
+      input.trustTier === "verificado"
+        ? "confiável para comprar sem cuidados extras além dos padrões de qualquer importação"
+        : input.trustTier === "referencia"
+          ? "use com cautela: peça amostra e verifique o histórico do fornecedor antes de comprar em volume"
+          : "alerta de risco alto: exija documentação de autenticidade e nota fiscal rastreável antes de qualquer compra, e considere começar com um lote pequeno";
+    return {
+      reasoning: `${input.leadName} — confiança ${input.trustScore}/100 (${input.trustTier}). Sinais considerados: ${signals}. ${verdict}.`,
+    };
+  }
+
+  async planInventory(input: PlanInventoryInput): Promise<PlanInventoryOutput> {
+    return {
+      reasoning: `Com pedido mínimo de ${input.moq} unidades e prazo de entrega de ${input.leadTimeDays} dias, um ponto de reposição de ${input.reorderPoint} unidade(s) evita ficar sem estoque durante o tempo de importação; ao bater nesse ponto, repor ${input.reorderQuantity} unidade(s) (o próprio MOQ do fornecedor) mantém o custo por unidade no melhor patamar.`,
+    };
   }
 }

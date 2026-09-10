@@ -10,7 +10,7 @@ const emptyForm = {
   category: "",
   basePrice: "",
   costBasis: "",
-  fulfillmentMode: "stock" as FulfillmentMode,
+  fulfillmentMode: "dropship" as FulfillmentMode,
   sku: "",
   keywords: "",
 };
@@ -51,7 +51,7 @@ export function Products() {
       category: prefill.category ?? "",
       description: prefill.description ?? "",
       costBasis: prefill.costBasis !== undefined ? String(prefill.costBasis) : "",
-      fulfillmentMode: prefill.fulfillmentMode ?? "stock",
+      fulfillmentMode: prefill.fulfillmentMode ?? "dropship",
       keywords: (prefill.keywords ?? []).join(", "),
     });
     setEditingId(null);
@@ -198,18 +198,18 @@ export function Products() {
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="radio"
-                  checked={form.fulfillmentMode === "stock"}
-                  onChange={() => setForm({ ...form, fulfillmentMode: "stock" })}
+                  checked={form.fulfillmentMode === "dropship"}
+                  onChange={() => setForm({ ...form, fulfillmentMode: "dropship" })}
                 />
-                Estoque (compro no atacado e guardo)
+                Dropshipping (compro por pedido, sem comprar primeiro)
               </label>
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="radio"
-                  checked={form.fulfillmentMode === "dropship"}
-                  onChange={() => setForm({ ...form, fulfillmentMode: "dropship" })}
+                  checked={form.fulfillmentMode === "stock"}
+                  onChange={() => setForm({ ...form, fulfillmentMode: "stock" })}
                 />
-                Dropshipping (compro por pedido, sem estoque)
+                Estoque (compro no atacado antes e guardo — ativa o controle de estoque)
               </label>
             </div>
           </Field>

@@ -1,9 +1,13 @@
 import {
   AIProvider,
+  AssessSupplierTrustInput,
+  AssessSupplierTrustOutput,
   ExplainRecommendationInput,
   ExplainRecommendationOutput,
   GenerateListingContentInput,
   GenerateListingContentOutput,
+  PlanInventoryInput,
+  PlanInventoryOutput,
   ResearchSuppliersInput,
   ResearchSuppliersOutput,
 } from "./AIProvider.js";
@@ -93,7 +97,8 @@ Responda APENAS em JSON no formato:
   }
 
   async researchSuppliers(input: ResearchSuppliersInput): Promise<ResearchSuppliersOutput> {
-    const prompt = `Você é um consultor de sourcing/importação para revendedores brasileiros de perfumes.
+    const prompt = `Você é um consultor de sourcing/importação para revendedores brasileiros de produtos de beleza
+(perfumaria, skincare, maquiagem e cabelo).
 Os dados abaixo são opções de fornecimento JÁ PESQUISADAS e JÁ ORDENADAS pelo menor custo total de
 importação (landedCostBrlMin/Max = produto + frete + impostos de referência) — essa é a prioridade
 automática da busca. Você NÃO deve inventar fornecedores, preços ou dados novos, nem reordenar as opções.
@@ -111,5 +116,41 @@ Responda APENAS em JSON no formato:
 {"summary": "...", "reasoningByLeadId": {"<leadId>": "<análise em português>", ...}}`;
 
     return this.generateJson<ResearchSuppliersOutput>(prompt);
+  }
+
+  async assessSupplierTrust(input: AssessSupplierTrustInput): Promise<AssessSupplierTrustOutput> {
+    const prompt = `Você é um analista de confiança de fornecedores para um revendedor brasileiro de produtos de beleza.
+O nível e a pontuação de confiança abaixo JÁ FORAM calculados por um critério curado — você NÃO deve mudar
+o nível nem inventar uma pontuação diferente. Sua única tarefa é escrever uma recomendação prática e objetiva
+em português sobre como o revendedor deve agir ao considerar esse fornecedor.
+
+Fornecedor: ${input.leadName}
+Nível de confiança: ${input.trustTier}
+Pontuação: ${input.trustScore}/100
+Sinais considerados: ${input.trustSignals.join("; ") || "nenhum sinal adicional"}
+Observações de risco: ${input.riskNotes}
+
+Responda APENAS em JSON no formato:
+{"reasoning": "..."}`;
+
+    return this.generateJson<AssessSupplierTrustOutput>(prompt);
+  }
+
+  async planInventory(input: PlanInventoryInput): Promise<PlanInventoryOutput> {
+    const prompt = `Você é um planejador de estoque para um pequeno revendedor de produtos de beleza no Brasil.
+O ponto de reposição e a quantidade de reposição abaixo JÁ FORAM calculados — você NÃO deve mudar esses números.
+Sua única tarefa é explicar em português, de forma prática, por que esse plano faz sentido dado o MOQ e o
+prazo de entrega do fornecedor.
+
+Produto: ${input.productName}
+MOQ do fornecedor: ${input.moq} unidades
+Prazo de entrega: ${input.leadTimeDays} dias
+Ponto de reposição sugerido: ${input.reorderPoint} unidades
+Quantidade de reposição sugerida: ${input.reorderQuantity} unidades
+
+Responda APENAS em JSON no formato:
+{"reasoning": "..."}`;
+
+    return this.generateJson<PlanInventoryOutput>(prompt);
   }
 }

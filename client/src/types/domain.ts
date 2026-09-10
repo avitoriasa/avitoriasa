@@ -141,13 +141,16 @@ export interface AppSettings {
   remessaIcmsPercent: number;
 }
 
-export type SupplierNiche = "perfumes_arabes" | "perfumes_importados_originais" | "geral_b2b";
+export type SupplierNiche = "marca_propria_atacado" | "importados_originais_marca" | "geral_b2b";
+export type BeautyCategory = "perfumes" | "skincare" | "maquiagem" | "cabelo" | "beleza_geral";
+export type TrustTier = "verificado" | "referencia" | "alerta";
 export type FulfillmentSuggestion = "estoque" | "dropshipping" | "ambos";
 
 export interface SourcingOption {
   leadId: string;
   name: string;
   niche: SupplierNiche;
+  category: BeautyCategory;
   channel: string;
   country: string;
   unitCostUsdMin: number;
@@ -164,7 +167,21 @@ export interface SourcingOption {
   productExamples: string[];
   estimatedMarginPercent: number | null;
   suggestedFulfillment: FulfillmentSuggestion;
+  trustTier: TrustTier;
+  trustScore: number;
+  trustSignals: string[];
   reasoning: string;
+}
+
+export interface TrustedSupplier {
+  id: string;
+  name: string;
+  category: BeautyCategory;
+  channel: string;
+  country: string;
+  trustNotes: string;
+  sourceLeadId?: string;
+  addedAt: string;
 }
 
 export interface SourcingResearchResult {
@@ -192,4 +209,46 @@ export interface DropshipEstimate {
   icmsPercent: number;
   icmsBrl: number;
   totalLandedBrl: number;
+}
+
+export type StockMovementType = "purchase" | "sale" | "adjustment";
+
+export interface StockMovement {
+  id: string;
+  productId: string;
+  type: StockMovementType;
+  quantity: number;
+  unitCostBrl?: number;
+  note?: string;
+  occurredAt: string;
+}
+
+export interface InventorySummary {
+  productId: string;
+  productName?: string;
+  sku?: string;
+  quantityOnHand: number;
+  averageUnitCostBrl: number;
+  reorderPoint: number;
+  isLowStock: boolean;
+}
+
+export interface SupplierTrustAssessment {
+  leadId: string;
+  trustTier: TrustTier;
+  trustScore: number;
+  reasoning: string;
+}
+
+export interface InventoryPlan {
+  reorderPoint: number;
+  reorderQuantity: number;
+  reasoning: string;
+}
+
+export interface OnboardingPipelineResult {
+  option: SourcingOption;
+  trustAssessment: SupplierTrustAssessment;
+  inventoryPlan: InventoryPlan | null;
+  aiProvider: string;
 }

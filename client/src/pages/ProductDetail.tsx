@@ -3,12 +3,14 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import type {
   FinancialSummary,
+  InventorySummary,
   Marketplace,
   Order,
   OptimizationLogEntry,
   Product,
   ProductMarketplaceConnection,
   RecommendationResult,
+  StockMovement,
 } from "../types/domain";
 
 function formatBRL(value: number): string {
@@ -146,7 +148,16 @@ export function ProductDetail() {
         <Link to="/products" className="text-sm text-indigo-600 hover:underline">
           ← Voltar para produtos
         </Link>
-        <h2 className="text-2xl font-semibold text-slate-900 mt-2">{product.name}</h2>
+        <h2 className="text-2xl font-semibold text-slate-900 mt-2 flex items-center gap-2">
+          {product.name}
+          <span
+            className={`text-xs px-2 py-0.5 rounded-full ${
+              product.fulfillmentMode === "dropship" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"
+            }`}
+          >
+            {product.fulfillmentMode === "dropship" ? "Dropshipping" : "Estoque"}
+          </span>
+        </h2>
         <p className="text-slate-500 text-sm mt-1">
           {product.category} · SKU {product.sku} · líquido desejado {formatBRL(product.basePrice)}
           {product.costBasis !== undefined && (
@@ -170,6 +181,8 @@ export function ProductDetail() {
           <FinancialStat label="Já repassado" value={formatBRL(financialSummary.paidOut)} />
         </section>
       )}
+
+      {product.fulfillmentMode === "stock" && <InventoryPanel productId={product.id} />}
 
       <section className="bg-white rounded-lg border border-slate-200 p-5">
         <div className="flex items-center justify-between mb-3">
@@ -514,5 +527,224 @@ function ScoreBar({ score }: { score: number }) {
       </div>
       <span className="text-xs text-slate-500 w-8 text-right">{score.toFixed(0)}</span>
     </div>
+  );
+}
+
+function InventoryPanel({ productId }: { productId: string }) {
+  const [summary, setSummary] = useState<InventorySummary | null>(null);
+  const [movements, setMovements] = useState<StockMovement[] | null>(null);
+  const [showMovements, setShowMovements] = useState(false);
+
+  const [purchaseQty, setPurchaseQty] = useState("");
+  const [purchaseCost, setPurchaseCost] = useState("");
+  const [purchaseNote, setPurchaseNote] = useState("");
+  const [adjustQty, setAdjustQty] = useState("");
+  const [adjustReason, setAdjustReason] = useState("");
+  const [reorderPoint, setReorderPoint] = useState("");
+  const [busy, setBusy] = useState<"purchase" | "adjust" | "reorder" | null>(null);
+
+  async function load() {
+    const s = await api.getProductInventory(productId);
+    setSummary(s);
+    setReorderPoint(String(s.reorderPoint));
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId]);
+
+  async function loadMovements() {
+    setMovements(await api.getInventoryMovements(productId));
+  }
+
+  async function toggleMovements() {
+    setShowMovements((v) => !v);
+    if (!movements) await loadMovements();
+  }
+
+  async function handlePurchase() {
+    if (!purchaseQty || !purchaseCost) return;
+    setBusy("purchase");
+    try {
+      await api.recordStockPurchase(productId, Number(purchaseQty), Number(purchaseCost), purchaseNote || undefined);
+      setPurchaseQty("");
+      setPurchaseCost("");
+      setPurchaseNote("");
+      await load();
+      if (showMovements) await loadMovements();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleAdjust() {
+    if (adjustQty.trim() === "") return;
+    setBusy("adjust");
+    try {
+      await api.adjustStock(productId, Number(adjustQty), adjustReason || "Ajuste manual");
+      setAdjustQty("");
+      setAdjustReason("");
+      await load();
+      if (showMovements) await loadMovements();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleReorderPoint() {
+    setBusy("reorder");
+    try {
+      await api.setReorderPoint(productId, Number(reorderPoint) || 0);
+      await load();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  if (!summary) return null;
+
+  return (
+    <section className="bg-white rounded-lg border border-slate-200 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-medium text-slate-900">Estoque</h3>
+        <button onClick={toggleMovements} className="text-sm text-indigo-600 hover:underline">
+          {showMovements ? "Ocultar movimentações" : "Ver movimentações"}
+        </button>
+      </div>
+
+      <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+        <div>
+          <p className="text-xs text-slate-500">Em estoque</p>
+          <p className="text-2xl font-semibold text-slate-900">{summary.quantityOnHand}</p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-500">Custo médio</p>
+          <p className="text-lg font-medium text-slate-700">{formatBRL(summary.averageUnitCostBrl)}</p>
+        </div>
+        {summary.isLowStock && (
+          <span className="self-center text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">
+            Estoque baixo (ponto de reposição: {summary.reorderPoint})
+          </span>
+        )}
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4 mt-4">
+        <div className="bg-slate-50 border border-slate-200 rounded-md p-3">
+          <p className="text-xs font-medium text-slate-700 mb-2">Registrar compra (entrada)</p>
+          <div className="flex flex-wrap items-end gap-2 text-xs">
+            <label className="flex flex-col gap-0.5">
+              <span>Quantidade</span>
+              <input
+                type="number"
+                className="input !text-xs !py-1 w-24"
+                value={purchaseQty}
+                onChange={(e) => setPurchaseQty(e.target.value)}
+              />
+            </label>
+            <label className="flex flex-col gap-0.5">
+              <span>Custo/un. (R$)</span>
+              <input
+                type="number"
+                step="0.01"
+                className="input !text-xs !py-1 w-24"
+                value={purchaseCost}
+                onChange={(e) => setPurchaseCost(e.target.value)}
+              />
+            </label>
+            <label className="flex flex-col gap-0.5 flex-1 min-w-[100px]">
+              <span>Nota (opcional)</span>
+              <input
+                className="input !text-xs !py-1"
+                value={purchaseNote}
+                onChange={(e) => setPurchaseNote(e.target.value)}
+              />
+            </label>
+            <button
+              onClick={handlePurchase}
+              disabled={busy === "purchase"}
+              className="px-3 py-1.5 rounded-md bg-emerald-600 text-white disabled:opacity-50"
+            >
+              {busy === "purchase" ? "Salvando..." : "Registrar"}
+            </button>
+          </div>
+          <p className="text-xs text-slate-400 mt-2">
+            O custo médio ponderado e o custo do produto são atualizados automaticamente.
+          </p>
+        </div>
+
+        <div className="bg-slate-50 border border-slate-200 rounded-md p-3">
+          <p className="text-xs font-medium text-slate-700 mb-2">Ajustar estoque (contagem manual)</p>
+          <div className="flex flex-wrap items-end gap-2 text-xs">
+            <label className="flex flex-col gap-0.5">
+              <span>Nova quantidade</span>
+              <input
+                type="number"
+                className="input !text-xs !py-1 w-24"
+                value={adjustQty}
+                onChange={(e) => setAdjustQty(e.target.value)}
+              />
+            </label>
+            <label className="flex flex-col gap-0.5 flex-1 min-w-[100px]">
+              <span>Motivo</span>
+              <input
+                className="input !text-xs !py-1"
+                value={adjustReason}
+                onChange={(e) => setAdjustReason(e.target.value)}
+                placeholder="ex: contagem física, avaria"
+              />
+            </label>
+            <button
+              onClick={handleAdjust}
+              disabled={busy === "adjust"}
+              className="px-3 py-1.5 rounded-md bg-slate-700 text-white disabled:opacity-50"
+            >
+              {busy === "adjust" ? "Salvando..." : "Ajustar"}
+            </button>
+          </div>
+
+          <div className="flex items-end gap-2 text-xs mt-3">
+            <label className="flex flex-col gap-0.5">
+              <span>Ponto de reposição</span>
+              <input
+                type="number"
+                className="input !text-xs !py-1 w-24"
+                value={reorderPoint}
+                onChange={(e) => setReorderPoint(e.target.value)}
+              />
+            </label>
+            <button
+              onClick={handleReorderPoint}
+              disabled={busy === "reorder"}
+              className="px-3 py-1.5 rounded-md border border-slate-300 text-slate-700 disabled:opacity-50"
+            >
+              {busy === "reorder" ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {showMovements && (
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          {(movements?.length ?? 0) === 0 ? (
+            <p className="text-xs text-slate-400">Nenhuma movimentação ainda.</p>
+          ) : (
+            <ul className="flex flex-col gap-1.5">
+              {movements!.map((m) => (
+                <li key={m.id} className="text-xs text-slate-500 flex justify-between gap-3">
+                  <span>
+                    <span className="text-slate-400">{new Date(m.occurredAt).toLocaleString("pt-BR")}</span> —{" "}
+                    {m.type === "purchase" ? "compra" : m.type === "sale" ? "venda" : "ajuste"}: {m.quantity > 0 ? "+" : ""}
+                    {m.quantity} un.
+                    {m.unitCostBrl !== undefined && ` a ${formatBRL(m.unitCostBrl)}/un.`}
+                    {m.note && ` — ${m.note}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </section>
   );
 }

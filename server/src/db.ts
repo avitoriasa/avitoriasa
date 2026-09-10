@@ -3,12 +3,15 @@ import path from "path";
 import { fileURLToPath } from "url";
 import {
   AppSettings,
+  InventoryItemSnapshot,
   Marketplace,
   OptimizationLogEntry,
   Order,
   Product,
   ProductMarketplaceConnection,
   RecommendationResult,
+  StockMovement,
+  TrustedSupplier,
 } from "./types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -22,6 +25,9 @@ interface Schema {
   recommendations: RecommendationResult[];
   optimizationLogs: OptimizationLogEntry[];
   orders: Order[];
+  trustedSuppliers: TrustedSupplier[];
+  inventoryItems: InventoryItemSnapshot[];
+  stockMovements: StockMovement[];
   settings: AppSettings;
 }
 
@@ -47,6 +53,9 @@ function emptySchema(): Schema {
     recommendations: [],
     optimizationLogs: [],
     orders: [],
+    trustedSuppliers: [],
+    inventoryItems: [],
+    stockMovements: [],
     settings: defaultSettings,
   };
 }
