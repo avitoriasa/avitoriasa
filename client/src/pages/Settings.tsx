@@ -163,6 +163,27 @@ export function Settings() {
           </span>
         </label>
 
+        <label className="flex flex-col gap-1 text-sm text-slate-700">
+          <span>Chave da SerpApi (dados reais do Google Trends)</span>
+          <input
+            type="password"
+            autoComplete="off"
+            className="input"
+            value={settings.serpApiKey}
+            onChange={(e) => setSettings({ ...settings, serpApiKey: e.target.value })}
+            placeholder="cole sua chave da serpapi.com aqui"
+          />
+          <span className="text-xs text-slate-400">
+            Opcional. Sem ela, o painel de "Tendências &amp; SEO" de cada produto usa um dataset de referência
+            curado (não é dado ao vivo) — não existe API pública gratuita oficial do Google Trends. Crie uma conta
+            gratuita em{" "}
+            <a href="https://serpapi.com" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">
+              serpapi.com
+            </a>{" "}
+            e cole a chave aqui para o app passar a buscar interesse de busca real (incluindo por região do Brasil).
+          </span>
+        </label>
+
         {message && <p className="text-sm text-indigo-700">{message}</p>}
 
         <div>

@@ -1,4 +1,13 @@
-import { AdBudgetSuggestion, Marketplace, Product, RecommendationEntry, SeoOpportunity, SourcingOption, TrustTier } from "../types.js";
+import {
+  AdBudgetSuggestion,
+  Marketplace,
+  Product,
+  RecommendationEntry,
+  RegionalRecommendation,
+  SeoOpportunity,
+  SourcingOption,
+  TrustTier,
+} from "../types.js";
 
 export interface ExplainRecommendationInput {
   product: Product;
@@ -116,6 +125,27 @@ export interface DraftAdCopyOutput {
 }
 
 /**
+ * "Regional demand" agent input. interestScore/purchasePropensityScore/
+ * verdict per region are already computed deterministically (see
+ * seoTrendsService.buildRegionalRecommendations) — interestScore from real
+ * (or curated-fallback) Google Trends data, purchasePropensityScore from a
+ * curated e-commerce/logistics reference weight, NOT live sales data. The
+ * agent's job is exactly what the seller actually wants: to call out when a
+ * region has high search but weak buying power (or the reverse) and
+ * recommend where to focus SEO/ad spend — never to change the scores.
+ */
+export interface AnalyzeRegionalDemandInput {
+  product: Product;
+  keyword: string;
+  regions: RegionalRecommendation[];
+}
+
+export interface AnalyzeRegionalDemandOutput {
+  summary: string;
+  reasoningByRegion: Record<string, string>;
+}
+
+/**
  * Pluggable AI provider. Implementations must not throw for expected
  * conditions — the caller (see src/ai/index.ts) treats any thrown error as
  * "provider unavailable" and falls back to the heuristic provider.
@@ -125,8 +155,9 @@ export interface DraftAdCopyOutput {
  * an SEO copywriter (generateListingContent), a sourcing analyst
  * (researchSuppliers), a trust analyst (assessSupplierTrust), an
  * inventory planner (planInventory), a trends/SEO analyst
- * (analyzeSeoTrends) and an ad copywriter (draftAdCopy) — each gets only
- * the narrow input it needs and never invents the numbers it's given.
+ * (analyzeSeoTrends), an ad copywriter (draftAdCopy) and a regional-demand
+ * analyst (analyzeRegionalDemand) — each gets only the narrow input it
+ * needs and never invents the numbers it's given.
  */
 export interface AIProvider {
   readonly name: string;
@@ -137,4 +168,5 @@ export interface AIProvider {
   planInventory(input: PlanInventoryInput): Promise<PlanInventoryOutput>;
   analyzeSeoTrends(input: AnalyzeSeoTrendsInput): Promise<AnalyzeSeoTrendsOutput>;
   draftAdCopy(input: DraftAdCopyInput): Promise<DraftAdCopyOutput>;
+  analyzeRegionalDemand(input: AnalyzeRegionalDemandInput): Promise<AnalyzeRegionalDemandOutput>;
 }

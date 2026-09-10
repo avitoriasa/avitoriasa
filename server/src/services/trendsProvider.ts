@@ -1,5 +1,6 @@
+import { ALL_REGIONS, STATE_TO_REGION } from "../data/regionalReference.js";
 import { CURATED_TREND_SIGNALS, genericFallbackSignal } from "../data/trendSignals.js";
-import { RisingQuery, TrendDirection, TrendSignal } from "../types.js";
+import { RegionCode, RegionalSearchSignal, RisingQuery, TrendDirection, TrendSignal } from "../types.js";
 
 /**
  * Pluggable source of Google-Trends-style search-interest data, mirroring
@@ -10,6 +11,8 @@ import { RisingQuery, TrendDirection, TrendSignal } from "../types.js";
 export interface TrendsProvider {
   readonly name: string;
   getSignals(keywords: string[], region: string): Promise<TrendSignal[]>;
+  /** Per-macro-region search-interest breakdown for a single keyword, within `country` (e.g. "BR"). */
+  getRegionalSignals(keyword: string, country: string): Promise<RegionalSearchSignal[]>;
 }
 
 function findCuratedMatch(keyword: string): TrendSignal | undefined {
@@ -19,10 +22,19 @@ function findCuratedMatch(keyword: string): TrendSignal | undefined {
   );
 }
 
+function hash(input: string): number {
+  let h = 0;
+  for (let i = 0; i < input.length; i++) {
+    h = (h << 5) - h + input.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
+}
+
 /**
  * Default provider: looks up each keyword against the curated reference
  * dataset (data/trendSignals.ts). No network call, so it always works —
- * this is what the app runs on unless SERPAPI_KEY is configured.
+ * this is what the app runs on unless a SerpApi key is configured.
  */
 export class CuratedTrendsProvider implements TrendsProvider {
   readonly name = "curado";
@@ -31,6 +43,18 @@ export class CuratedTrendsProvider implements TrendsProvider {
     return keywords.map((keyword) => {
       const match = findCuratedMatch(keyword);
       return match ? { ...match, region } : genericFallbackSignal(keyword);
+    });
+  }
+
+  async getRegionalSignals(keyword: string): Promise<RegionalSearchSignal[]> {
+    const base = findCuratedMatch(keyword)?.interestScore ?? genericFallbackSignal(keyword).interestScore;
+    // No live regional split without SerpApi — derive a stable, clearly-labeled
+    // per-region variation from a hash of the keyword so results don't jump
+    // around between calls, without pretending it's measured data.
+    return ALL_REGIONS.map((region) => {
+      const wobble = (hash(`${keyword}:${region}`) % 30) - 15; // -15..+14
+      const interestScore = Math.max(0, Math.min(100, base + wobble));
+      return { region, interestScore, source: "curado (sem repartição real por região)" };
     });
   }
 }
@@ -44,13 +68,19 @@ interface SerpApiRelatedQuery {
   value?: number | string;
 }
 
+interface SerpApiGeoMapEntry {
+  geo: string;
+  extracted_value?: number;
+  value?: string;
+}
+
 /**
  * Real Google Trends data via SerpApi's `google_trends` engine
  * (https://serpapi.com/google-trends-api) — a paid third-party API with a
  * free tier, used because there is no official public Google Trends API.
- * Requires SERPAPI_KEY in the environment; throws on any failure (missing
- * key, HTTP error, unexpected shape) so the resilient wrapper below falls
- * back to CuratedTrendsProvider instead of breaking the feature.
+ * Requires an API key; throws on any failure (missing/invalid key, HTTP
+ * error, unexpected shape) so the resilient wrapper below falls back to
+ * CuratedTrendsProvider instead of breaking the feature.
  */
 export class SerpApiTrendsProvider implements TrendsProvider {
   readonly name = "google_trends";
@@ -66,33 +96,31 @@ export class SerpApiTrendsProvider implements TrendsProvider {
     return "estavel";
   }
 
+  private async fetchJson<T>(params: Record<string, string>): Promise<T> {
+    const url = new URL("https://serpapi.com/search.json");
+    url.searchParams.set("engine", "google_trends");
+    url.searchParams.set("api_key", this.apiKey);
+    for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`SerpApi respondeu ${res.status}: ${await res.text()}`);
+    return res.json() as Promise<T>;
+  }
+
   async getSignals(keywords: string[], region: string): Promise<TrendSignal[]> {
     const results: TrendSignal[] = [];
     for (const keyword of keywords) {
-      const timelineUrl = new URL("https://serpapi.com/search.json");
-      timelineUrl.searchParams.set("engine", "google_trends");
-      timelineUrl.searchParams.set("q", keyword);
-      timelineUrl.searchParams.set("geo", region);
-      timelineUrl.searchParams.set("data_type", "TIMESERIES");
-      timelineUrl.searchParams.set("api_key", this.apiKey);
-
-      const relatedUrl = new URL("https://serpapi.com/search.json");
-      relatedUrl.searchParams.set("engine", "google_trends");
-      relatedUrl.searchParams.set("q", keyword);
-      relatedUrl.searchParams.set("geo", region);
-      relatedUrl.searchParams.set("data_type", "RELATED_QUERIES");
-      relatedUrl.searchParams.set("api_key", this.apiKey);
-
-      const [timelineRes, relatedRes] = await Promise.all([fetch(timelineUrl), fetch(relatedUrl)]);
-      if (!timelineRes.ok) throw new Error(`SerpApi (timeline) respondeu ${timelineRes.status}`);
-      if (!relatedRes.ok) throw new Error(`SerpApi (related) respondeu ${relatedRes.status}`);
-
-      const timelineData = (await timelineRes.json()) as {
-        interest_over_time?: { timeline_data?: SerpApiTimelinePoint[] };
-      };
-      const relatedData = (await relatedRes.json()) as {
-        related_queries?: { rising?: SerpApiRelatedQuery[] };
-      };
+      const [timelineData, relatedData] = await Promise.all([
+        this.fetchJson<{ interest_over_time?: { timeline_data?: SerpApiTimelinePoint[] } }>({
+          q: keyword,
+          geo: region,
+          data_type: "TIMESERIES",
+        }),
+        this.fetchJson<{ related_queries?: { rising?: SerpApiRelatedQuery[] } }>({
+          q: keyword,
+          geo: region,
+          data_type: "RELATED_QUERIES",
+        }),
+      ]);
 
       const points = timelineData.interest_over_time?.timeline_data ?? [];
       const interestScore = points.length ? points[points.length - 1]?.values?.[0]?.value ?? 40 : 40;
@@ -113,14 +141,54 @@ export class SerpApiTrendsProvider implements TrendsProvider {
     }
     return results;
   }
+
+  /**
+   * "Interest by region" for one keyword (https://serpapi.com/google-trends-interest-by-region):
+   * data_type=GEO_MAP_0 + region=REGION returns per-state values within
+   * `country`. States are bucketed into Brazilian macro-regions and
+   * averaged — a real (not estimated) search-interest split.
+   */
+  async getRegionalSignals(keyword: string, country: string): Promise<RegionalSearchSignal[]> {
+    const data = await this.fetchJson<{ interest_by_region?: SerpApiGeoMapEntry[] }>({
+      q: keyword,
+      geo: country,
+      region: "REGION",
+      data_type: "GEO_MAP_0",
+    });
+    const entries = data.interest_by_region ?? [];
+
+    const sums: Record<RegionCode, { total: number; count: number }> = {
+      norte: { total: 0, count: 0 },
+      nordeste: { total: 0, count: 0 },
+      centro_oeste: { total: 0, count: 0 },
+      sudeste: { total: 0, count: 0 },
+      sul: { total: 0, count: 0 },
+    };
+
+    for (const entry of entries) {
+      // SerpApi returns geo codes like "BR-SP" for state-level results.
+      const uf = entry.geo?.split("-")[1]?.toUpperCase();
+      const region = uf ? STATE_TO_REGION[uf] : undefined;
+      if (!region) continue;
+      const value = entry.extracted_value ?? Number(String(entry.value).replace(/[^0-9]/g, "")) ?? 0;
+      sums[region].total += value;
+      sums[region].count += 1;
+    }
+
+    return ALL_REGIONS.map((region) => ({
+      region,
+      interestScore: sums[region].count > 0 ? Math.round(sums[region].total / sums[region].count) : 0,
+      source: "google_trends",
+    }));
+  }
 }
 
 const curated = new CuratedTrendsProvider();
 
 /**
- * Wraps the configured provider so a SerpApi failure (no key, rate limit,
- * network error) falls back to the curated dataset instead of breaking the
- * feature — same shape as ResilientAIProvider in ai/index.ts.
+ * Wraps the configured provider so a SerpApi failure (no/invalid key, rate
+ * limit, network error) falls back to the curated dataset instead of
+ * breaking the feature — same shape as ResilientAIProvider in ai/index.ts.
  */
 class ResilientTrendsProvider implements TrendsProvider {
   name: string;
@@ -129,23 +197,32 @@ class ResilientTrendsProvider implements TrendsProvider {
     this.name = primary.name;
   }
 
-  async getSignals(keywords: string[], region: string): Promise<TrendSignal[]> {
+  private async run<T>(methodName: string, call: (provider: TrendsProvider) => Promise<T>): Promise<T> {
     try {
-      const result = await this.primary.getSignals(keywords, region);
+      const result = await call(this.primary);
       this.name = this.primary.name;
       return result;
     } catch (err) {
-      console.warn(`[trends] Provedor "${this.primary.name}" falhou (${(err as Error).message}); usando dataset curado.`);
+      console.warn(`[trends] Provedor "${this.primary.name}" falhou em ${methodName} (${(err as Error).message}); usando dataset curado.`);
       this.name = `${curated.name} (fallback de ${this.primary.name})`;
-      return curated.getSignals(keywords, region);
+      return call(curated);
     }
+  }
+
+  getSignals(keywords: string[], region: string): Promise<TrendSignal[]> {
+    return this.run("getSignals", (p) => p.getSignals(keywords, region));
+  }
+
+  getRegionalSignals(keyword: string, country: string): Promise<RegionalSearchSignal[]> {
+    return this.run("getRegionalSignals", (p) => p.getRegionalSignals(keyword, country));
   }
 }
 
-export function getConfiguredTrendsProvider(): TrendsProvider {
-  const apiKey = process.env.SERPAPI_KEY;
-  if (apiKey) {
-    return new ResilientTrendsProvider(new SerpApiTrendsProvider(apiKey));
+/** apiKey should come from AppSettings.serpApiKey (falls back to SERPAPI_KEY env if that's empty). */
+export function getConfiguredTrendsProvider(apiKey?: string): TrendsProvider {
+  const key = apiKey || process.env.SERPAPI_KEY;
+  if (key) {
+    return new ResilientTrendsProvider(new SerpApiTrendsProvider(key));
   }
   return curated;
 }

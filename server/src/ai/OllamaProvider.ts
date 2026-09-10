@@ -1,5 +1,7 @@
 import {
   AIProvider,
+  AnalyzeRegionalDemandInput,
+  AnalyzeRegionalDemandOutput,
   AnalyzeSeoTrendsInput,
   AnalyzeSeoTrendsOutput,
   AssessSupplierTrustInput,
@@ -191,5 +193,30 @@ Responda APENAS em JSON no formato:
 {"headline": "...", "primaryText": "...", "targetingNotes": "..."}`;
 
     return this.generateJson<DraftAdCopyOutput>(prompt);
+  }
+
+  async analyzeRegionalDemand(input: AnalyzeRegionalDemandInput): Promise<AnalyzeRegionalDemandOutput> {
+    const prompt = `Você é um analista de expansão regional para e-commerce brasileiro. Os dados abaixo, por
+macro-região do Brasil, JÁ FORAM calculados — você NÃO deve mudá-los:
+- interestScore: interesse de busca real (ou estimado, quando sinalizado) no Google Trends para "${input.keyword}".
+- purchasePropensityScore: NÃO é dado de vendas reais — é uma estimativa que combina o interesse de busca com um
+  índice de referência de infraestrutura de e-commerce/logística da região (não existe API pública de volume de
+  compra real por região para um produto específico).
+- verdict: "priorizar" (busca e propensão de compra altas), "monitorar" (só uma das duas é alta — é aqui que você
+  deve destacar a divergência: busca alta com propensão de compra baixa pode indicar gargalo logístico/de renda
+  local; propensão de compra alta com busca baixa pode indicar oportunidade ainda não explorada) ou
+  "baixa_prioridade" (ambas baixas).
+
+Sua tarefa: (1) uma frase de análise por região, sempre nomeando explicitamente quando busca e propensão de compra
+divergem e uma hipótese honesta do motivo, e (2) um resumo recomendando em qual(is) região(ões) priorizar SEO e
+anúncios pagos para o produto "${input.product.name}", sendo transparente que propensão de compra é uma estimativa,
+não dado de vendas reais.
+
+Regiões (já calculadas): ${JSON.stringify(input.regions, null, 2)}
+
+Responda APENAS em JSON no formato:
+{"summary": "...", "reasoningByRegion": {"<region>": "<análise em português>", ...}}`;
+
+    return this.generateJson<AnalyzeRegionalDemandOutput>(prompt);
   }
 }

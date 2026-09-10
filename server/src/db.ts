@@ -43,6 +43,8 @@ const defaultSettings: AppSettings = {
   importTaxPercent: Number(process.env.IMPORT_TAX_PERCENT) || 60,
   // ICMS de referência sobre remessas individuais (regime distinto da importação comercial em volume).
   remessaIcmsPercent: Number(process.env.REMESSA_ICMS_PERCENT) || 17,
+  // Chave da SerpApi para dados reais do Google Trends — opcional, sem ela usa o dataset curado.
+  serpApiKey: process.env.SERPAPI_KEY || "",
 };
 
 function emptySchema(): Schema {

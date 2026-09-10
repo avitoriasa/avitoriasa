@@ -1,5 +1,6 @@
+import { ALL_REGIONS, REGION_ECOMMERCE_WEIGHT, REGION_LABELS } from "../data/regionalReference.js";
 import { CURATED_TREND_SIGNALS } from "../data/trendSignals.js";
-import { AdBudgetSuggestion, Product, SeoOpportunity, TrendSignal } from "../types.js";
+import { AdBudgetSuggestion, Product, RegionalRecommendation, RegionalSearchSignal, SeoOpportunity, TrendSignal } from "../types.js";
 
 function tokenize(text: string): string[] {
   return text
@@ -96,4 +97,51 @@ export function suggestAdBudget(product: Product): AdBudgetSuggestion {
 /** All curated keywords — used by routes/trends.ts to expose what the reference dataset covers, if needed. */
 export function listCuratedKeywords(): string[] {
   return CURATED_TREND_SIGNALS.map((s) => s.keyword);
+}
+
+/**
+ * Blends a region's real (or curated-fallback) search-interest score with
+ * its curated e-commerce/logistics reference weight (regionalReference.ts)
+ * into a single "purchase propensity" figure — deliberately NOT presented
+ * as real sales data, since no live API reports actual purchases by region
+ * for an arbitrary product. Equal-weighted so a region with strong search
+ * but weak buying infrastructure (or vice-versa) pulls the score down
+ * instead of one side masking the other.
+ */
+function computePurchasePropensity(interestScore: number, region: RegionalRecommendation["region"]): number {
+  return Math.round(interestScore * 0.5 + REGION_ECOMMERCE_WEIGHT[region] * 0.5);
+}
+
+/**
+ * Deterministic verdict from both scores — this is what surfaces the
+ * "alta busca mas baixa compra" (or the reverse) divergence the seller
+ * cares about, instead of collapsing everything into one number: both high
+ * means prioritize spend there; only one high means watch it (opportunity
+ * or under-monetized interest); both low means low priority for now.
+ */
+function classifyRegionalVerdict(interestScore: number, purchasePropensityScore: number): RegionalRecommendation["verdict"] {
+  const HIGH = 60;
+  if (interestScore >= HIGH && purchasePropensityScore >= HIGH) return "priorizar";
+  if (interestScore >= HIGH || purchasePropensityScore >= HIGH) return "monitorar";
+  return "baixa_prioridade";
+}
+
+/**
+ * Ranks all 5 Brazilian macro-regions for one keyword's regional search
+ * signals — reasoning left empty for the AI agent to fill in afterwards
+ * (see routes/trends.ts / AIProvider.analyzeRegionalDemand).
+ */
+export function buildRegionalRecommendations(signals: RegionalSearchSignal[]): Omit<RegionalRecommendation, "reasoning">[] {
+  return ALL_REGIONS.map((region) => {
+    const signal = signals.find((s) => s.region === region);
+    const interestScore = signal?.interestScore ?? 0;
+    const purchasePropensityScore = computePurchasePropensity(interestScore, region);
+    return {
+      region,
+      regionLabel: REGION_LABELS[region],
+      interestScore,
+      purchasePropensityScore,
+      verdict: classifyRegionalVerdict(interestScore, purchasePropensityScore),
+    };
+  }).sort((a, b) => b.purchasePropensityScore - a.purchasePropensityScore);
 }

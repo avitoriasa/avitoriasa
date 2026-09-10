@@ -188,6 +188,14 @@ export interface AppSettings {
    * Varia por estado — confirme antes de usar em produção real.
    */
   remessaIcmsPercent: number;
+  /**
+   * Chave da SerpApi (https://serpapi.com) usada para buscar dados reais do
+   * Google Trends no agente de tendências/SEO. Sem essa chave, o app usa um
+   * dataset de referência curado (não é dado ao vivo) — não existe API
+   * pública gratuita oficial do Google Trends. Pode ser definida aqui ou via
+   * a variável de ambiente SERPAPI_KEY (esta, se preenchida, tem prioridade).
+   */
+  serpApiKey: string;
 }
 
 /**
@@ -449,6 +457,43 @@ export interface AdCopyBrief {
   suggestedKeywords: string[];
 }
 
+/**
+ * Brazilian macro-region, used to bucket Google Trends' state-level
+ * "interest by region" breakdown (see data/regionalReference.ts for the
+ * UF -> region map).
+ */
+export type RegionCode = "norte" | "nordeste" | "centro_oeste" | "sudeste" | "sul";
+
+/**
+ * Real (or curated-fallback) search-interest breakdown for one macro-region,
+ * for a single keyword. This is genuinely live Google Trends data when
+ * SerpApi is configured (data_type=GEO_MAP_0) — unlike purchasePropensity
+ * below, interestScore here is not an estimate.
+ */
+export interface RegionalSearchSignal {
+  region: RegionCode;
+  interestScore: number;
+  source: string;
+}
+
+/**
+ * A macro-region ranked for one product/keyword. interestScore is real (or
+ * curated-fallback) search interest; purchasePropensityScore is NOT live
+ * sales data — no such API exists for arbitrary products — it's a
+ * deterministic blend of that search interest with a curated regional
+ * e-commerce/logistics reference weight (see regionalReference.ts). verdict
+ * is computed from both scores (see seoTrendsService.classifyRegionalVerdict);
+ * reasoning is the only AI-written field.
+ */
+export interface RegionalRecommendation {
+  region: RegionCode;
+  regionLabel: string;
+  interestScore: number;
+  purchasePropensityScore: number;
+  verdict: "priorizar" | "monitorar" | "baixa_prioridade";
+  reasoning: string;
+}
+
 /** Full result of the "trends & SEO/ads" agent for one product (routes/trends.ts). */
 export interface TrendsAnalysisResult {
   productId: string;
@@ -461,6 +506,10 @@ export interface TrendsAnalysisResult {
   seoSummary: string;
   adBudget: AdBudgetSuggestion;
   adCopy: AdCopyBrief;
+  /** Which keyword the regional breakdown below is about (its top-ranked opportunity). */
+  regionalKeyword: string;
+  regionalSummary: string;
+  regionalRecommendations: RegionalRecommendation[];
   aiProvider: string;
   trendsProvider: string;
 }

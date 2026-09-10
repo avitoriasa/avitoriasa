@@ -2,6 +2,8 @@ import { db } from "../db.js";
 import { AppSettings } from "../types.js";
 import {
   AIProvider,
+  AnalyzeRegionalDemandInput,
+  AnalyzeRegionalDemandOutput,
   AnalyzeSeoTrendsInput,
   AnalyzeSeoTrendsOutput,
   AssessSupplierTrustInput,
@@ -75,6 +77,10 @@ class ResilientAIProvider implements AIProvider {
 
   draftAdCopy(input: DraftAdCopyInput): Promise<DraftAdCopyOutput> {
     return this.run("draftAdCopy", (p) => p.draftAdCopy(input));
+  }
+
+  analyzeRegionalDemand(input: AnalyzeRegionalDemandInput): Promise<AnalyzeRegionalDemandOutput> {
+    return this.run("analyzeRegionalDemand", (p) => p.analyzeRegionalDemand(input));
   }
 }
 

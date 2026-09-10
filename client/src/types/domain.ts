@@ -139,6 +139,7 @@ export interface AppSettings {
   usdToBrlRate: number;
   importTaxPercent: number;
   remessaIcmsPercent: number;
+  serpApiKey: string;
 }
 
 export type SupplierNiche = "marca_propria_atacado" | "importados_originais_marca" | "geral_b2b";
@@ -293,6 +294,17 @@ export interface AdCopyBrief {
   suggestedKeywords: string[];
 }
 
+export type RegionCode = "norte" | "nordeste" | "centro_oeste" | "sudeste" | "sul";
+
+export interface RegionalRecommendation {
+  region: RegionCode;
+  regionLabel: string;
+  interestScore: number;
+  purchasePropensityScore: number;
+  verdict: "priorizar" | "monitorar" | "baixa_prioridade";
+  reasoning: string;
+}
+
 export interface TrendsAnalysisResult {
   productId: string;
   marketplaceId: string | null;
@@ -304,6 +316,9 @@ export interface TrendsAnalysisResult {
   seoSummary: string;
   adBudget: AdBudgetSuggestion;
   adCopy: AdCopyBrief;
+  regionalKeyword: string;
+  regionalSummary: string;
+  regionalRecommendations: RegionalRecommendation[];
   aiProvider: string;
   trendsProvider: string;
 }

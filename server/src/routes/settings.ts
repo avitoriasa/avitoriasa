@@ -23,6 +23,7 @@ settingsRouter.put("/", async (req, res) => {
     importTaxPercent: body.importTaxPercent !== undefined ? Number(body.importTaxPercent) : store.settings.importTaxPercent,
     remessaIcmsPercent:
       body.remessaIcmsPercent !== undefined ? Number(body.remessaIcmsPercent) : store.settings.remessaIcmsPercent,
+    serpApiKey: body.serpApiKey !== undefined ? String(body.serpApiKey) : store.settings.serpApiKey,
   };
   store.settings = updated;
   await db.save();

@@ -1,9 +1,14 @@
 import { Router } from "express";
 import { getConfiguredAIProvider } from "../ai/index.js";
 import { db } from "../db.js";
-import { buildKeywordCandidates, computeSeoOpportunities, suggestAdBudget } from "../services/seoTrendsService.js";
+import {
+  buildKeywordCandidates,
+  buildRegionalRecommendations,
+  computeSeoOpportunities,
+  suggestAdBudget,
+} from "../services/seoTrendsService.js";
 import { getConfiguredTrendsProvider } from "../services/trendsProvider.js";
-import { SeoOpportunity, TrendsAnalysisResult } from "../types.js";
+import { RegionalRecommendation, SeoOpportunity, TrendsAnalysisResult } from "../types.js";
 
 export const trendsRouter = Router();
 
@@ -29,7 +34,7 @@ trendsRouter.post("/analyze", async (req, res) => {
     const marketplaceName = marketplace?.name ?? "marketplaces conectados";
 
     const keywords = buildKeywordCandidates(product);
-    const trendsProvider = getConfiguredTrendsProvider();
+    const trendsProvider = getConfiguredTrendsProvider(store.settings.serpApiKey);
     const signals = await trendsProvider.getSignals(keywords, "BR");
 
     const opportunitiesWithoutReasoning = computeSeoOpportunities(product, signals);
@@ -53,6 +58,19 @@ trendsRouter.post("/analyze", async (req, res) => {
       budget: adBudget,
     });
 
+    const regionalKeyword = opportunities[0]?.keyword ?? keywords[0] ?? product.category;
+    const regionalSignals = await trendsProvider.getRegionalSignals(regionalKeyword, "BR");
+    const regionalWithoutReasoning = buildRegionalRecommendations(regionalSignals);
+    const { summary: regionalSummary, reasoningByRegion } = await aiProvider.analyzeRegionalDemand({
+      product,
+      keyword: regionalKeyword,
+      regions: regionalWithoutReasoning.map((r) => ({ ...r, reasoning: "" })),
+    });
+    const regionalRecommendations: RegionalRecommendation[] = regionalWithoutReasoning.map((r) => ({
+      ...r,
+      reasoning: reasoningByRegion[r.region] ?? "",
+    }));
+
     const result: TrendsAnalysisResult = {
       productId: product.id,
       marketplaceId: marketplace?.id ?? null,
@@ -64,6 +82,9 @@ trendsRouter.post("/analyze", async (req, res) => {
       seoSummary: summary,
       adBudget,
       adCopy: { headline, primaryText, targetingNotes, suggestedKeywords: topKeywords },
+      regionalKeyword,
+      regionalSummary,
+      regionalRecommendations,
       aiProvider: aiProvider.name,
       trendsProvider: trendsProvider.name,
     };

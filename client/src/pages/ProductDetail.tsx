@@ -764,6 +764,18 @@ const DIRECTION_CLASS: Record<string, string> = {
   estavel: "bg-slate-100 text-slate-600",
 };
 
+const VERDICT_LABEL: Record<string, string> = {
+  priorizar: "Priorizar",
+  monitorar: "Monitorar",
+  baixa_prioridade: "Baixa prioridade",
+};
+
+const VERDICT_CLASS: Record<string, string> = {
+  priorizar: "bg-emerald-100 text-emerald-700",
+  monitorar: "bg-amber-100 text-amber-700",
+  baixa_prioridade: "bg-slate-100 text-slate-600",
+};
+
 function TrendsPanel({
   productId,
   connections,
@@ -882,6 +894,50 @@ function TrendsPanel({
             <p className="text-xs text-slate-400 mt-2 italic">
               Rascunho estratégico apenas — nenhuma campanha é criada ou paga automaticamente. Copie e ajuste no
               gerenciador de anúncios de cada marketplace.
+            </p>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+              <p className="text-xs font-medium text-slate-700">
+                Onde priorizar por região (palavra-chave: "{result.regionalKeyword}")
+              </p>
+              <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">
+                {result.trendsProvider.startsWith("google_trends")
+                  ? "interesse de busca real (Google Trends)"
+                  : "interesse de busca estimado (dataset curado)"}
+              </span>
+            </div>
+            <p className="text-sm text-slate-700 mb-3">{result.regionalSummary}</p>
+            <ul className="flex flex-col gap-2">
+              {result.regionalRecommendations.map((r) => (
+                <li key={r.region} className="border border-slate-200 rounded-md p-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <span className="font-medium text-slate-900 flex items-center gap-2">
+                      {r.regionLabel}
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${VERDICT_CLASS[r.verdict]}`}>
+                        {VERDICT_LABEL[r.verdict]}
+                      </span>
+                    </span>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <span className="w-36 shrink-0">Busca</span>
+                        <ScoreBar score={r.interestScore} />
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <span className="w-36 shrink-0">Propensão de compra (est.)</span>
+                        <ScoreBar score={r.purchasePropensityScore} />
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-600 mt-2">{r.reasoning}</p>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-slate-400 mt-2 italic">
+              "Propensão de compra" é uma estimativa que combina o interesse de busca com um índice de referência de
+              e-commerce/logística por região — não existe API de vendas reais por região para um produto
+              específico. Use como direção, não como dado definitivo.
             </p>
           </div>
         </div>

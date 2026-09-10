@@ -1,5 +1,7 @@
 import {
   AIProvider,
+  AnalyzeRegionalDemandInput,
+  AnalyzeRegionalDemandOutput,
   AnalyzeSeoTrendsInput,
   AnalyzeSeoTrendsOutput,
   AssessSupplierTrustInput,
@@ -221,5 +223,32 @@ export class HeuristicProvider implements AIProvider {
     )} — ajuste manualmente no gerenciador de anúncios do marketplace, este app não cria nem dispara campanhas automaticamente.`;
 
     return { headline, primaryText, targetingNotes };
+  }
+
+  async analyzeRegionalDemand(input: AnalyzeRegionalDemandInput): Promise<AnalyzeRegionalDemandOutput> {
+    const reasoningByRegion: Record<string, string> = {};
+    for (const r of input.regions) {
+      const phrase =
+        r.verdict === "priorizar"
+          ? `busca alta (${r.interestScore}/100) e boa capacidade de conversão em compra (${r.purchasePropensityScore}/100) — priorize orçamento de anúncio e frete rápido para essa região`
+          : r.verdict === "monitorar"
+            ? r.interestScore > r.purchasePropensityScore
+              ? `busca alta (${r.interestScore}/100) mas capacidade de conversão em compra ainda limitada (${r.purchasePropensityScore}/100) — provável gargalo de logística/renda local; monitore antes de investir pesado em anúncio aqui`
+              : `capacidade de conversão em compra razoável (${r.purchasePropensityScore}/100) mas busca ainda baixa (${r.interestScore}/100) para "${input.keyword}" — pode valer testar um anúncio pequeno para validar o interesse`
+            : `busca (${r.interestScore}/100) e capacidade de conversão em compra (${r.purchasePropensityScore}/100) ainda baixas para "${input.keyword}" — baixa prioridade por ora`;
+      reasoningByRegion[r.region] = `${r.regionLabel}: ${phrase}.`;
+    }
+
+    const sorted = [...input.regions].sort((a, b) => b.purchasePropensityScore - a.purchasePropensityScore);
+    const top = sorted[0];
+    const divergent = input.regions.find((r) => r.verdict === "monitorar" && r.interestScore - r.purchasePropensityScore >= 20);
+
+    let summary = `Para "${input.keyword}" em "${input.product.name}": ${top.regionLabel} tem a melhor combinação de busca e capacidade de conversão em compra (propensão ${top.purchasePropensityScore}/100) — priorize essa região em SEO e anúncios pagos.`;
+    if (divergent) {
+      summary += ` Atenção: ${divergent.regionLabel} tem busca bem mais alta (${divergent.interestScore}/100) do que a capacidade de conversão estimada (${divergent.purchasePropensityScore}/100) — indício de interesse não plenamente atendido por infraestrutura logística/renda local; vale testar antes de investir pesado.`;
+    }
+    summary += ` Lembrando: a "capacidade de conversão em compra" é uma estimativa que combina o interesse de busca com um índice de referência de e-commerce/logística por região — não é dado de vendas reais.`;
+
+    return { summary, reasoningByRegion };
   }
 }
