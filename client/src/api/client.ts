@@ -1,0 +1,165 @@
+import type {
+  AppSettings,
+  ApprovalRequest,
+  CommandCenterSummary,
+  DropshipEstimate,
+  FinancialSummary,
+  FulfillmentMode,
+  FxMethod,
+  InventorySummary,
+  Marketplace,
+  OnboardingPipelineResult,
+  OptimizationLogEntry,
+  Order,
+  Product,
+  ProductMarketplaceConnection,
+  RecommendationResult,
+  SourcingResearchResult,
+  StockMovement,
+  TrendsAnalysisResult,
+  TrustedSupplier,
+} from "../types/domain";
+
+export interface ProductInput {
+  name: string;
+  description: string;
+  category: string;
+  basePrice: number;
+  /** Pass null to clear a previously-set cost basis. */
+  costBasis?: number | null;
+  fulfillmentMode?: FulfillmentMode;
+  sku: string;
+  keywords: string[];
+}
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`/api${path}`, {
+    ...options,
+    headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(body.error ?? `Erro ${res.status}`);
+  }
+  if (res.status === 204) return undefined as T;
+  return res.json();
+}
+
+export const api = {
+  listProducts: () => request<Product[]>("/products"),
+  createProduct: (payload: ProductInput) =>
+    request<Product>("/products", { method: "POST", body: JSON.stringify(payload) }),
+  getProduct: (id: string) => request<Product>(`/products/${id}`),
+  updateProduct: (id: string, payload: Partial<ProductInput>) =>
+    request<Product>(`/products/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteProduct: (id: string) => request<void>(`/products/${id}`, { method: "DELETE" }),
+
+  listMarketplaces: () => request<Marketplace[]>("/marketplaces"),
+
+  getRecommendation: (productId: string) =>
+    request<RecommendationResult>(`/products/${productId}/recommendation`).catch(() => undefined),
+  refreshRecommendation: (productId: string) =>
+    request<RecommendationResult>(`/products/${productId}/recommendation`, { method: "POST" }),
+
+  listConnections: (productId: string) =>
+    request<ProductMarketplaceConnection[]>(`/products/${productId}/connections`),
+  connectMarketplace: (productId: string, marketplaceId: string) =>
+    request<ProductMarketplaceConnection>(`/products/${productId}/connections`, {
+      method: "POST",
+      body: JSON.stringify({ marketplaceId }),
+    }),
+  disconnectMarketplace: (connectionId: string) =>
+    request<ProductMarketplaceConnection>(`/connections/${connectionId}`, { method: "DELETE" }),
+  optimizeConnection: (connectionId: string) =>
+    request<OptimizationLogEntry>(`/connections/${connectionId}/optimize`, { method: "POST" }),
+  getHistory: (connectionId: string) =>
+    request<OptimizationLogEntry[]>(`/connections/${connectionId}/history`),
+
+  getSettings: () => request<AppSettings>("/settings"),
+  updateSettings: (payload: Partial<AppSettings>) =>
+    request<AppSettings>("/settings", { method: "PUT", body: JSON.stringify(payload) }),
+
+  runSweepNow: () => request<{ ok: true }>("/scheduler/run-now", { method: "POST" }),
+
+  recentOptimizations: () =>
+    request<(OptimizationLogEntry & { productName: string; marketplaceName: string })[]>(
+      "/optimizations/recent"
+    ),
+
+  getConnectionOrders: (connectionId: string) => request<Order[]>(`/connections/${connectionId}/orders`),
+  simulateOrder: (connectionId: string) =>
+    request<Order[]>(`/connections/${connectionId}/orders/simulate`, { method: "POST" }),
+  getProductFinancialSummary: (productId: string) =>
+    request<FinancialSummary>(`/products/${productId}/financial-summary`),
+  getGlobalFinancialSummary: () => request<FinancialSummary>("/financial-summary"),
+
+  listFxMethods: () => request<FxMethod[]>("/sourcing/fx-methods"),
+  researchSuppliers: (query: string, desiredResalePrice?: number) =>
+    request<SourcingResearchResult>("/sourcing/research", {
+      method: "POST",
+      body: JSON.stringify({ query, desiredResalePrice }),
+    }),
+  estimateDropship: (sourcePriceUsd: number, shippingBrl: number, isRemessaConformePlatform: boolean) =>
+    request<DropshipEstimate>("/sourcing/dropship-estimate", {
+      method: "POST",
+      body: JSON.stringify({ sourcePriceUsd, shippingBrl, isRemessaConformePlatform }),
+    }),
+
+  updateOrderTracking: (orderId: string, carrier: string, trackingNumber: string) =>
+    request<Order>(`/orders/${orderId}/tracking`, {
+      method: "PUT",
+      body: JSON.stringify({ carrier, trackingNumber }),
+    }),
+  recordDropshipPurchase: (orderId: string, sourcePurchaseCostBrl: number, sourceTaxEstimateBrl: number) =>
+    request<Order>(`/orders/${orderId}/dropship-purchase`, {
+      method: "PUT",
+      body: JSON.stringify({ sourcePurchaseCostBrl, sourceTaxEstimateBrl }),
+    }),
+
+  listTrustedSuppliers: () => request<TrustedSupplier[]>("/trusted-suppliers"),
+  addTrustedSupplier: (payload: Omit<TrustedSupplier, "id" | "addedAt">) =>
+    request<TrustedSupplier>("/trusted-suppliers", { method: "POST", body: JSON.stringify(payload) }),
+  removeTrustedSupplier: (id: string) => request<void>(`/trusted-suppliers/${id}`, { method: "DELETE" }),
+
+  runOnboardingPipeline: (leadId: string, desiredResalePrice?: number) =>
+    request<OnboardingPipelineResult>("/agents/onboard", {
+      method: "POST",
+      body: JSON.stringify({ leadId, desiredResalePrice }),
+    }),
+
+  listInventory: () => request<InventorySummary[]>("/inventory"),
+  getProductInventory: (productId: string) => request<InventorySummary>(`/products/${productId}/inventory`),
+  getInventoryMovements: (productId: string) => request<StockMovement[]>(`/products/${productId}/inventory/movements`),
+  recordStockPurchase: (productId: string, quantity: number, unitCostBrl: number, note?: string) =>
+    request<InventorySummary>(`/products/${productId}/inventory/purchase`, {
+      method: "POST",
+      body: JSON.stringify({ quantity, unitCostBrl, note }),
+    }),
+  adjustStock: (productId: string, quantity: number, reason: string) =>
+    request<InventorySummary>(`/products/${productId}/inventory/adjust`, {
+      method: "POST",
+      body: JSON.stringify({ quantity, reason }),
+    }),
+  setReorderPoint: (productId: string, reorderPoint: number) =>
+    request<InventorySummary>(`/products/${productId}/inventory/reorder-point`, {
+      method: "PUT",
+      body: JSON.stringify({ reorderPoint }),
+    }),
+
+  getCommandCenter: () => request<CommandCenterSummary>("/command-center"),
+  listApprovals: () => request<ApprovalRequest[]>("/approvals"),
+  refreshApprovals: () => request<{ created: number }>("/approvals/refresh", { method: "POST" }),
+  approveRequest: (id: string) => request<ApprovalRequest>(`/approvals/${id}/approve`, { method: "POST" }),
+  rejectRequest: (id: string) => request<ApprovalRequest>(`/approvals/${id}/reject`, { method: "POST" }),
+
+  pauseListing: (connectionId: string) =>
+    request<ProductMarketplaceConnection>(`/connections/${connectionId}/pause`, { method: "POST" }),
+  resumeListing: (connectionId: string) =>
+    request<ProductMarketplaceConnection>(`/connections/${connectionId}/resume`, { method: "POST" }),
+
+  analyzeTrends: (productId: string, marketplaceId?: string) =>
+    request<TrendsAnalysisResult>("/trends/analyze", {
+      method: "POST",
+      body: JSON.stringify({ productId, marketplaceId }),
+    }),
+};
