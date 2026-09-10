@@ -3,7 +3,8 @@ export interface Product {
   name: string;
   description: string;
   category: string;
-  price: number;
+  /** Preço líquido que você quer receber por unidade vendida (sem a taxa do marketplace). */
+  basePrice: number;
   sku: string;
   keywords: string[];
   createdAt: string;
@@ -23,6 +24,13 @@ export interface Marketplace {
 
 export type ConnectionStatus = "disconnected" | "connected" | "pending";
 
+export interface PricingBreakdown {
+  basePrice: number;
+  feePercent: number;
+  feeAmount: number;
+  listingPrice: number;
+}
+
 export interface ProductMarketplaceConnection {
   id: string;
   productId: string;
@@ -32,6 +40,7 @@ export interface ProductMarketplaceConnection {
   currentTitle: string;
   currentDescription: string;
   currentKeywords: string[];
+  pricing: PricingBreakdown;
   rankScore: number;
   lastOptimizedAt: string | null;
   createdAt: string;
@@ -49,6 +58,7 @@ export interface RecommendationEntry {
     categoryFit: number;
     netMarginEstimate: number;
   };
+  pricing: PricingBreakdown;
 }
 
 export interface RecommendationResult {
@@ -74,6 +84,31 @@ export interface OptimizationLogEntry {
   reason: string;
   aiProvider: string;
   createdAt: string;
+}
+
+export type OrderStatus = "pending_payout" | "paid_out";
+
+export interface Order {
+  id: string;
+  connectionId: string;
+  productId: string;
+  marketplaceId: string;
+  externalOrderId: string;
+  grossAmount: number;
+  feeAmount: number;
+  netAmount: number;
+  status: OrderStatus;
+  soldAt: string;
+  payoutExpectedAt: string;
+}
+
+export interface FinancialSummary {
+  orderCount: number;
+  grossTotal: number;
+  feeTotal: number;
+  netTotal: number;
+  pendingPayout: number;
+  paidOut: number;
 }
 
 export interface AppSettings {

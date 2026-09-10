@@ -5,6 +5,7 @@ import {
   AppSettings,
   Marketplace,
   OptimizationLogEntry,
+  Order,
   Product,
   ProductMarketplaceConnection,
   RecommendationResult,
@@ -20,6 +21,7 @@ interface Schema {
   connections: ProductMarketplaceConnection[];
   recommendations: RecommendationResult[];
   optimizationLogs: OptimizationLogEntry[];
+  orders: Order[];
   settings: AppSettings;
 }
 
@@ -38,6 +40,7 @@ function emptySchema(): Schema {
     connections: [],
     recommendations: [],
     optimizationLogs: [],
+    orders: [],
     settings: defaultSettings,
   };
 }

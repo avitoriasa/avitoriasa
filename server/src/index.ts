@@ -4,6 +4,7 @@ import express from "express";
 import { connectionsRouter } from "./routes/connections.js";
 import { marketplacesRouter } from "./routes/marketplaces.js";
 import { optimizationsRouter } from "./routes/optimizations.js";
+import { ordersRouter } from "./routes/orders.js";
 import { productsRouter } from "./routes/products.js";
 import { schedulerRouter } from "./routes/scheduler.js";
 import { settingsRouter } from "./routes/settings.js";
@@ -22,6 +23,7 @@ app.use("/api/connections", connectionsRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/scheduler", schedulerRouter);
 app.use("/api/optimizations", optimizationsRouter);
+app.use("/api", ordersRouter);
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 

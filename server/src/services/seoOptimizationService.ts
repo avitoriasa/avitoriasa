@@ -2,6 +2,7 @@ import { v4 as uuid } from "uuid";
 import { getMarketplaceAdapter } from "../adapters/MarketplaceAdapter.js";
 import { AIProvider } from "../ai/index.js";
 import { db } from "../db.js";
+import { computePricing } from "./pricingService.js";
 import { OptimizationLogEntry, ProductMarketplaceConnection } from "../types.js";
 
 export async function optimizeConnection(
@@ -27,12 +28,17 @@ export async function optimizeConnection(
     iteration,
   });
 
+  // Recompute pricing from the product's current base price in case it
+  // changed since the last cycle — the marketplace fee never gets stale.
+  const pricing = computePricing(product.basePrice, marketplace.feePercent);
+
   const adapter = getMarketplaceAdapter(marketplace.slug);
   const published = await adapter.publishListing({
     externalListingId: connection.externalListingId,
     title: generated.title,
     description: generated.description,
     keywords: generated.keywords,
+    price: pricing.listingPrice,
   });
 
   const log: OptimizationLogEntry = {
@@ -57,6 +63,7 @@ export async function optimizeConnection(
     currentTitle: generated.title,
     currentDescription: generated.description,
     currentKeywords: generated.keywords,
+    pricing,
     lastOptimizedAt: log.createdAt,
     status: "connected",
     rankScore: Math.min(100, connection.rankScore + 2), // simulated ranking lift from freshness

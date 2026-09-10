@@ -3,7 +3,12 @@ export interface Product {
   name: string;
   description: string;
   category: string;
-  price: number;
+  /**
+   * Preço líquido que o vendedor quer receber por unidade vendida (o valor
+   * publicado em cada marketplace é maior, para cobrir a taxa daquele
+   * marketplace — ver PricingBreakdown / pricingService.ts).
+   */
+  basePrice: number;
   sku: string;
   keywords: string[];
   createdAt: string;
@@ -23,6 +28,19 @@ export interface Marketplace {
 
 export type ConnectionStatus = "disconnected" | "connected" | "pending";
 
+/**
+ * Breakdown of how a product's desired net price (Product.basePrice)
+ * translates into the price actually published on a given marketplace,
+ * using reverse pricing so the seller nets exactly `basePrice` after the
+ * marketplace deducts its fee: listingPrice = basePrice / (1 - feePercent/100).
+ */
+export interface PricingBreakdown {
+  basePrice: number;
+  feePercent: number;
+  feeAmount: number;
+  listingPrice: number;
+}
+
 export interface ProductMarketplaceConnection {
   id: string;
   productId: string;
@@ -32,6 +50,7 @@ export interface ProductMarketplaceConnection {
   currentTitle: string;
   currentDescription: string;
   currentKeywords: string[];
+  pricing: PricingBreakdown;
   rankScore: number;
   lastOptimizedAt: string | null;
   createdAt: string;
@@ -58,6 +77,7 @@ export interface RecommendationEntry {
     categoryFit: number;
     netMarginEstimate: number;
   };
+  pricing: PricingBreakdown;
 }
 
 export interface RecommendationResult {
@@ -83,6 +103,38 @@ export interface OptimizationLogEntry {
   reason: string;
   aiProvider: string;
   createdAt: string;
+}
+
+export type OrderStatus = "pending_payout" | "paid_out";
+
+/**
+ * A sale captured from a marketplace. Today these are simulated by
+ * MarketplaceAdapter.fetchOrders (see adapters/MarketplaceAdapter.ts) so the
+ * financial view works without real credentials. Swap that adapter method
+ * for the marketplace's real Orders/Settlement API and this shape (and
+ * everything downstream) keeps working unchanged.
+ */
+export interface Order {
+  id: string;
+  connectionId: string;
+  productId: string;
+  marketplaceId: string;
+  externalOrderId: string;
+  grossAmount: number;
+  feeAmount: number;
+  netAmount: number;
+  status: OrderStatus;
+  soldAt: string;
+  payoutExpectedAt: string;
+}
+
+export interface FinancialSummary {
+  orderCount: number;
+  grossTotal: number;
+  feeTotal: number;
+  netTotal: number;
+  pendingPayout: number;
+  paidOut: number;
 }
 
 export interface AppSettings {

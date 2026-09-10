@@ -2,12 +2,18 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import type {
+  FinancialSummary,
   Marketplace,
+  Order,
   OptimizationLogEntry,
   Product,
   ProductMarketplaceConnection,
   RecommendationResult,
 } from "../types/domain";
+
+function formatBRL(value: number): string {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
 
 export function ProductDetail() {
   const { id } = useParams<{ id: string }>();
@@ -19,19 +25,25 @@ export function ProductDetail() {
   const [refreshingRec, setRefreshingRec] = useState(false);
   const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
   const [history, setHistory] = useState<Record<string, OptimizationLogEntry[]>>({});
+  const [financialSummary, setFinancialSummary] = useState<FinancialSummary | null>(null);
+  const [expandedOrders, setExpandedOrders] = useState<string | null>(null);
+  const [orders, setOrders] = useState<Record<string, Order[]>>({});
+  const [simulatingOrderFor, setSimulatingOrderFor] = useState<string | null>(null);
 
   async function load() {
     if (!id) return;
-    const [p, m, c, rec] = await Promise.all([
+    const [p, m, c, rec, summary] = await Promise.all([
       api.getProduct(id),
       api.listMarketplaces(),
       api.listConnections(id),
       api.getRecommendation(id),
+      api.getProductFinancialSummary(id),
     ]);
     setProduct(p);
     setMarketplaces(m);
     setConnections(c);
     setRecommendation(rec);
+    setFinancialSummary(summary);
   }
 
   useEffect(() => {
@@ -96,6 +108,34 @@ export function ProductDetail() {
     if (!history[connectionId]) await loadHistory(connectionId);
   }
 
+  async function loadOrders(connectionId: string) {
+    const o = await api.getConnectionOrders(connectionId);
+    setOrders((prev) => ({ ...prev, [connectionId]: o }));
+  }
+
+  async function toggleOrders(connectionId: string) {
+    if (expandedOrders === connectionId) {
+      setExpandedOrders(null);
+      return;
+    }
+    setExpandedOrders(connectionId);
+    if (!orders[connectionId]) await loadOrders(connectionId);
+  }
+
+  async function handleSimulateOrder(connectionId: string) {
+    setSimulatingOrderFor(connectionId);
+    try {
+      const created = await api.simulateOrder(connectionId);
+      if (created.length === 0) {
+        alert("Nenhuma venda simulada dessa vez (tente novamente — é probabilístico).");
+      }
+      if (id) setFinancialSummary(await api.getProductFinancialSummary(id));
+      if (expandedOrders === connectionId) await loadOrders(connectionId);
+    } finally {
+      setSimulatingOrderFor(null);
+    }
+  }
+
   if (!product) return <p className="text-slate-500 text-sm">Carregando...</p>;
 
   const connectedMarketplaceIds = new Set(connections.filter((c) => c.status === "connected").map((c) => c.marketplaceId));
@@ -108,9 +148,18 @@ export function ProductDetail() {
         </Link>
         <h2 className="text-2xl font-semibold text-slate-900 mt-2">{product.name}</h2>
         <p className="text-slate-500 text-sm mt-1">
-          {product.category} · SKU {product.sku} · R$ {product.price.toFixed(2)}
+          {product.category} · SKU {product.sku} · líquido desejado {formatBRL(product.basePrice)}
         </p>
       </div>
+
+      {financialSummary && financialSummary.orderCount > 0 && (
+        <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <FinancialStat label="Vendas" value={String(financialSummary.orderCount)} />
+          <FinancialStat label="Bruto vendido" value={formatBRL(financialSummary.grossTotal)} />
+          <FinancialStat label="A receber (pendente)" value={formatBRL(financialSummary.pendingPayout)} />
+          <FinancialStat label="Já repassado" value={formatBRL(financialSummary.paidOut)} />
+        </section>
+      )}
 
       <section className="bg-white rounded-lg border border-slate-200 p-5">
         <div className="flex items-center justify-between mb-3">
@@ -155,6 +204,11 @@ export function ProductDetail() {
                     </div>
                   </div>
                   <p className="text-sm text-slate-600 mt-2">{entry.reasoning}</p>
+                  <p className="text-xs text-slate-500 mt-2">
+                    Publicar por <span className="font-medium text-slate-700">{formatBRL(entry.pricing.listingPrice)}</span> para
+                    você receber {formatBRL(entry.pricing.basePrice)} líquidos (taxa de {entry.pricing.feePercent}% ={" "}
+                    {formatBRL(entry.pricing.feeAmount)}).
+                  </p>
                 </li>
               ))}
             </ul>
@@ -190,6 +244,9 @@ export function ProductDetail() {
                         <button onClick={() => toggleHistory(conn.id)} className="text-slate-500 hover:underline">
                           {expandedHistory === conn.id ? "Ocultar histórico" : "Ver histórico"}
                         </button>
+                        <button onClick={() => toggleOrders(conn.id)} className="text-slate-500 hover:underline">
+                          {expandedOrders === conn.id ? "Ocultar pedidos" : "Ver pedidos"}
+                        </button>
                         <button
                           onClick={() => handleDisconnect(conn.id)}
                           disabled={busyMarketplaceId === conn.id}
@@ -208,6 +265,20 @@ export function ProductDetail() {
                         </span>
                       ))}
                     </div>
+
+                    <div className="mt-3 bg-slate-50 border border-slate-200 rounded-md p-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-600">
+                      <span>
+                        Preço publicado: <span className="font-medium text-slate-800">{formatBRL(conn.pricing.listingPrice)}</span>
+                      </span>
+                      <span>
+                        Taxa do marketplace ({conn.pricing.feePercent}%): {formatBRL(conn.pricing.feeAmount)}
+                      </span>
+                      <span>
+                        Você recebe: <span className="font-medium text-slate-800">{formatBRL(conn.pricing.basePrice)}</span> por
+                        venda
+                      </span>
+                    </div>
+
                     <p className="text-xs text-slate-400 mt-2">
                       Última otimização:{" "}
                       {conn.lastOptimizedAt ? new Date(conn.lastOptimizedAt).toLocaleString("pt-BR") : "nunca"} · Score
@@ -232,12 +303,63 @@ export function ProductDetail() {
                         )}
                       </div>
                     )}
+
+                    {expandedOrders === conn.id && (
+                      <div className="mt-3 border-t border-slate-100 pt-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs text-slate-500">
+                            Pedidos são simulados a cada ciclo de otimização (0-2 por conexão). Use o botão para
+                            simular uma venda agora, sem esperar o ciclo automático.
+                          </p>
+                          <button
+                            onClick={() => handleSimulateOrder(conn.id)}
+                            disabled={simulatingOrderFor === conn.id}
+                            className="shrink-0 text-xs px-3 py-1 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            {simulatingOrderFor === conn.id ? "Simulando..." : "Simular venda"}
+                          </button>
+                        </div>
+                        {(orders[conn.id]?.length ?? 0) === 0 ? (
+                          <p className="text-xs text-slate-400">Nenhum pedido ainda.</p>
+                        ) : (
+                          <ul className="flex flex-col gap-2">
+                            {orders[conn.id].map((order) => (
+                              <li key={order.id} className="text-xs text-slate-500 flex justify-between gap-3">
+                                <span>
+                                  <span className="text-slate-400">{new Date(order.soldAt).toLocaleString("pt-BR")}</span>{" "}
+                                  — bruto {formatBRL(order.grossAmount)}, taxa {formatBRL(order.feeAmount)}, líquido{" "}
+                                  <span className="text-slate-700 font-medium">{formatBRL(order.netAmount)}</span>
+                                </span>
+                                <span
+                                  className={
+                                    order.status === "paid_out"
+                                      ? "text-emerald-600 font-medium whitespace-nowrap"
+                                      : "text-amber-600 font-medium whitespace-nowrap"
+                                  }
+                                >
+                                  {order.status === "paid_out" ? "repassado" : "aguardando repasse"}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
                   </li>
                 );
               })}
           </ul>
         )}
       </section>
+    </div>
+  );
+}
+
+function FinancialStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 p-4">
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="text-lg font-semibold text-slate-900 mt-1">{value}</p>
     </div>
   );
 }

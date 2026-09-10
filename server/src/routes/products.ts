@@ -2,6 +2,7 @@ import { Router } from "express";
 import { v4 as uuid } from "uuid";
 import { getConfiguredAIProvider } from "../ai/index.js";
 import { db } from "../db.js";
+import { computePricing, syncConnectionPricing } from "../services/pricingService.js";
 import { generateRecommendation, getLatestRecommendation } from "../services/recommendationService.js";
 import { optimizeConnection } from "../services/seoOptimizationService.js";
 import { Product, ProductMarketplaceConnection } from "../types.js";
@@ -14,9 +15,9 @@ productsRouter.get("/", async (_req, res) => {
 });
 
 productsRouter.post("/", async (req, res) => {
-  const { name, description, category, price, sku, keywords } = req.body ?? {};
-  if (!name || !category || price === undefined || !sku) {
-    return res.status(400).json({ error: "Campos obrigatórios: name, category, price, sku" });
+  const { name, description, category, basePrice, sku, keywords } = req.body ?? {};
+  if (!name || !category || basePrice === undefined || !sku) {
+    return res.status(400).json({ error: "Campos obrigatórios: name, category, basePrice, sku" });
   }
 
   const store = await db.read();
@@ -26,7 +27,7 @@ productsRouter.post("/", async (req, res) => {
     name,
     description: description ?? "",
     category,
-    price: Number(price),
+    basePrice: Number(basePrice),
     sku,
     keywords: Array.isArray(keywords) ? keywords : [],
     createdAt: now,
@@ -57,20 +58,39 @@ productsRouter.put("/:id", async (req, res) => {
   const index = store.products.findIndex((p) => p.id === req.params.id);
   if (index === -1) return res.status(404).json({ error: "Produto não encontrado" });
 
-  const { name, description, category, price, sku, keywords } = req.body ?? {};
+  const { name, description, category, basePrice, sku, keywords } = req.body ?? {};
   const existing = store.products[index];
+  const priceChanged = basePrice !== undefined && Number(basePrice) !== existing.basePrice;
   const updated: Product = {
     ...existing,
     name: name ?? existing.name,
     description: description ?? existing.description,
     category: category ?? existing.category,
-    price: price !== undefined ? Number(price) : existing.price,
+    basePrice: basePrice !== undefined ? Number(basePrice) : existing.basePrice,
     sku: sku ?? existing.sku,
     keywords: Array.isArray(keywords) ? keywords : existing.keywords,
     updatedAt: new Date().toISOString(),
   };
   store.products[index] = updated;
   await db.save();
+
+  if (priceChanged) {
+    const affectedConnections = store.connections.filter(
+      (c) => c.productId === updated.id && c.status === "connected"
+    );
+    for (const connection of affectedConnections) {
+      const marketplace = store.marketplaces.find((m) => m.id === connection.marketplaceId);
+      if (!marketplace) continue;
+      try {
+        const pricing = await syncConnectionPricing(connection, updated, marketplace);
+        connection.pricing = pricing;
+      } catch (err) {
+        console.error(`[products] Falha ao sincronizar preço da conexão ${connection.id}:`, (err as Error).message);
+      }
+    }
+    if (affectedConnections.length) await db.save();
+  }
+
   res.json(updated);
 });
 
@@ -135,6 +155,7 @@ productsRouter.post("/:id/connections", async (req, res) => {
     currentTitle: product.name,
     currentDescription: product.description,
     currentKeywords: product.keywords,
+    pricing: computePricing(product.basePrice, marketplace.feePercent),
     rankScore: 50,
     lastOptimizedAt: null,
     createdAt: new Date().toISOString(),

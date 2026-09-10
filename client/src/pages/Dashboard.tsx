@@ -1,22 +1,33 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
-import type { Marketplace, OptimizationLogEntry, Product } from "../types/domain";
+import type { FinancialSummary, Marketplace, OptimizationLogEntry, Product } from "../types/domain";
 
 type RecentLog = OptimizationLogEntry & { productName: string; marketplaceName: string };
+
+function formatBRL(value: number): string {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
 
 export function Dashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [marketplaces, setMarketplaces] = useState<Marketplace[]>([]);
   const [recent, setRecent] = useState<RecentLog[]>([]);
+  const [financialSummary, setFinancialSummary] = useState<FinancialSummary | null>(null);
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   async function load() {
-    const [p, m, r] = await Promise.all([api.listProducts(), api.listMarketplaces(), api.recentOptimizations()]);
+    const [p, m, r, f] = await Promise.all([
+      api.listProducts(),
+      api.listMarketplaces(),
+      api.recentOptimizations(),
+      api.getGlobalFinancialSummary(),
+    ]);
     setProducts(p);
     setMarketplaces(m);
     setRecent(r);
+    setFinancialSummary(f);
   }
 
   useEffect(() => {
@@ -58,10 +69,30 @@ export function Dashboard() {
       {message && <div className="text-sm text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md px-3 py-2">{message}</div>}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label="Produtos cadastrados" value={products.length} />
-        <StatCard label="Marketplaces disponíveis" value={marketplaces.length} />
-        <StatCard label="Otimizações registradas" value={recent.length} />
+        <StatCard label="Produtos cadastrados" value={String(products.length)} />
+        <StatCard label="Marketplaces disponíveis" value={String(marketplaces.length)} />
+        <StatCard label="Otimizações registradas" value={String(recent.length)} />
       </div>
+
+      {financialSummary && financialSummary.orderCount > 0 && (
+        <div className="bg-white rounded-lg border border-slate-200 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-medium text-slate-900">Financeiro (todos os produtos)</h3>
+            <span className="text-xs text-slate-400">{financialSummary.orderCount} venda(s) simulada(s)</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <StatCard label="Bruto vendido" value={formatBRL(financialSummary.grossTotal)} />
+            <StatCard label="Taxas dos marketplaces" value={formatBRL(financialSummary.feeTotal)} />
+            <StatCard label="A receber (pendente)" value={formatBRL(financialSummary.pendingPayout)} />
+            <StatCard label="Já repassado" value={formatBRL(financialSummary.paidOut)} />
+          </div>
+          <p className="text-xs text-slate-400 mt-3">
+            O dinheiro da venda fica retido no próprio marketplace e cai no saldo/carteira do vendedor lá dentro; o
+            "repasse" simulado aqui representa esse crédito ficando disponível para saque — a transferência para sua
+            conta bancária é feita na plataforma do marketplace, não por este CRM.
+          </p>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg border border-slate-200 p-5">
         <h3 className="font-medium text-slate-900 mb-3">Atividade recente de otimização por IA</h3>
@@ -118,7 +149,7 @@ export function Dashboard() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-white rounded-lg border border-slate-200 p-5">
       <p className="text-sm text-slate-500">{label}</p>

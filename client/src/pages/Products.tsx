@@ -4,12 +4,13 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import type { Product } from "../types/domain";
 
-const emptyForm = { name: "", description: "", category: "", price: "", sku: "", keywords: "" };
+const emptyForm = { name: "", description: "", category: "", basePrice: "", sku: "", keywords: "" };
 
 export function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [form, setForm] = useState(emptyForm);
-  const [showForm, setShowForm] = useState(false);
+  const [mode, setMode] = useState<"closed" | "create" | "edit">("closed");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,24 +22,49 @@ export function Products() {
     load();
   }, []);
 
+  function openCreateForm() {
+    setForm(emptyForm);
+    setEditingId(null);
+    setMode(mode === "create" ? "closed" : "create");
+  }
+
+  function openEditForm(p: Product) {
+    setForm({
+      name: p.name,
+      description: p.description,
+      category: p.category,
+      basePrice: String(p.basePrice),
+      sku: p.sku,
+      keywords: p.keywords.join(", "),
+    });
+    setEditingId(p.id);
+    setMode("edit");
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError(null);
+    const payload = {
+      name: form.name,
+      description: form.description,
+      category: form.category,
+      basePrice: Number(form.basePrice),
+      sku: form.sku,
+      keywords: form.keywords
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean),
+    };
     try {
-      await api.createProduct({
-        name: form.name,
-        description: form.description,
-        category: form.category,
-        price: Number(form.price),
-        sku: form.sku,
-        keywords: form.keywords
-          .split(",")
-          .map((k) => k.trim())
-          .filter(Boolean),
-      });
+      if (mode === "edit" && editingId) {
+        await api.updateProduct(editingId, payload);
+      } else {
+        await api.createProduct(payload);
+      }
       setForm(emptyForm);
-      setShowForm(false);
+      setEditingId(null);
+      setMode("closed");
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -63,15 +89,18 @@ export function Products() {
           </p>
         </div>
         <button
-          onClick={() => setShowForm((v) => !v)}
+          onClick={openCreateForm}
           className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
         >
-          {showForm ? "Cancelar" : "Novo produto"}
+          {mode === "create" ? "Cancelar" : "Novo produto"}
         </button>
       </div>
 
-      {showForm && (
+      {mode !== "closed" && (
         <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-slate-200 p-5 grid grid-cols-2 gap-4">
+          <h3 className="col-span-2 font-medium text-slate-900 -mb-2">
+            {mode === "edit" ? "Editar produto" : "Novo produto"}
+          </h3>
           <Field label="Nome" required>
             <input
               className="input"
@@ -89,15 +118,21 @@ export function Products() {
               required
             />
           </Field>
-          <Field label="Preço (R$)" required>
+          <Field label="Preço líquido desejado (R$)" required>
             <input
               type="number"
               step="0.01"
               className="input"
-              value={form.price}
-              onChange={(e) => setForm({ ...form, price: e.target.value })}
+              value={form.basePrice}
+              onChange={(e) => setForm({ ...form, basePrice: e.target.value })}
+              placeholder="quanto você quer receber por unidade, já sem a taxa"
               required
             />
+            {mode === "edit" && (
+              <span className="text-xs text-slate-400">
+                Ao salvar, o preço publicado em cada marketplace conectado é recalculado automaticamente.
+              </span>
+            )}
           </Field>
           <Field label="SKU" required>
             <input className="input" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} required />
@@ -118,14 +153,26 @@ export function Products() {
             />
           </Field>
           {error && <p className="col-span-2 text-sm text-red-600">{error}</p>}
-          <div className="col-span-2">
+          <div className="col-span-2 flex items-center gap-3">
             <button
               type="submit"
               disabled={saving}
               className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
             >
-              {saving ? "Salvando..." : "Salvar produto"}
+              {saving ? "Salvando..." : mode === "edit" ? "Salvar alterações" : "Salvar produto"}
             </button>
+            {mode === "edit" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("closed");
+                  setEditingId(null);
+                }}
+                className="text-sm text-slate-500 hover:underline"
+              >
+                Cancelar
+              </button>
+            )}
           </div>
         </form>
       )}
@@ -139,13 +186,16 @@ export function Products() {
                 {p.name}
               </Link>
               <p className="text-sm text-slate-500">
-                {p.category} · SKU {p.sku} · R$ {p.price.toFixed(2)}
+                {p.category} · SKU {p.sku} · líquido desejado R$ {p.basePrice.toFixed(2)}
               </p>
             </div>
             <div className="flex items-center gap-3">
               <Link to={`/products/${p.id}`} className="text-sm text-indigo-600 hover:underline">
                 Ver detalhes
               </Link>
+              <button onClick={() => openEditForm(p)} className="text-sm text-slate-600 hover:underline">
+                Editar
+              </button>
               <button onClick={() => handleDelete(p.id)} className="text-sm text-red-600 hover:underline">
                 Remover
               </button>

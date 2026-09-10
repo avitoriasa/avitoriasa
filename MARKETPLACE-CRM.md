@@ -3,8 +3,9 @@
 CRM para conectar seus produtos aos melhores marketplaces. O sistema:
 
 1. **Recomenda o melhor marketplace** para cada produto, com um score e uma justificativa gerados por um modelo de IA (interface plugável para modelos open source via [Ollama](https://ollama.com), com um fallback heurístico que funciona sem nenhuma dependência externa).
-2. **Conecta o produto** ao marketplace escolhido (adapters mockados para Mercado Livre, Shopee, Amazon Brasil, Magazine Luiza e Shein — prontos para receber credenciais reais).
+2. **Conecta o produto** ao marketplace escolhido (adapters mockados para Mercado Livre, Shopee, Amazon Brasil, Magazine Luiza e Shein — prontos para receber credenciais reais), já calculando o preço de publicação a partir da taxa daquele marketplace.
 3. **Reotimiza continuamente** título, descrição e palavras-chave (SEO) de cada anúncio conectado, em ciclos automáticos, para evitar estagnação no ranking do marketplace.
+4. **Acompanha o financeiro** de cada produto/marketplace: vendas, taxa cobrada e repasse esperado (hoje simulado, pronto para ligar às APIs reais de pedidos de cada marketplace).
 
 ## Estrutura
 
@@ -66,6 +67,33 @@ Para integrar de verdade:
 
 O restante do sistema (recomendação, otimização, scheduler, rotas, frontend) não precisa mudar — tudo depende apenas dessas interfaces.
 
+## Precificação (preço + taxa do marketplace)
+
+Cada produto tem um `basePrice`: o valor líquido que você quer receber por unidade vendida. Cada marketplace conectado tem sua própria `feePercent`. O preço realmente publicado no marketplace (`listingPrice`) é calculado por **precificação reversa** (`server/src/services/pricingService.ts`), para que, depois do marketplace descontar a taxa dele, sobre exatamente o `basePrice`:
+
+```
+listingPrice = basePrice / (1 - feePercent / 100)
+```
+
+Exemplo: produto com preço líquido de R$ 300 num marketplace com taxa de 14% é publicado por **R$ 348,84** (R$ 48,84 de taxa) — o vendedor recebe R$ 300,00 líquidos.
+
+Esse breakdown (preço base, taxa, preço publicado) aparece:
+- em cada marketplace do ranking de recomendação;
+- em cada conexão ativa na tela do produto.
+
+Se você editar o preço líquido do produto (`PUT /api/products/:id`), o preço publicado de **todas as conexões ativas** é recalculado e reenviado ao adapter do marketplace na hora — não espera o próximo ciclo de SEO.
+
+## Financeiro (pedidos e repasses)
+
+Não é necessário integrar a uma plataforma de pagamento à parte para receber o valor das vendas: cada marketplace processa o pagamento do comprador e credita o líquido (já descontada a taxa) numa carteira/saldo próprio do vendedor dentro daquele marketplace (ex.: Mercado Pago no Mercado Livre). O saque dali para sua conta bancária é feito na própria plataforma do marketplace — este CRM não move dinheiro.
+
+O que o CRM oferece é uma **visão financeira consolidada**, hoje simulada e pronta para virar integração real:
+
+- `server/src/adapters/MarketplaceAdapter.ts` expõe `fetchOrders(...)`, mockado para gerar 0-2 vendas por consulta ao preço de publicação atual. Troque por uma chamada real à API de pedidos de cada marketplace (ex.: Orders API do Mercado Livre, SP-API da Amazon, Order API da Shopee) e o resto do sistema não muda.
+- `server/src/services/ordersService.ts` calcula bruto/taxa/líquido de cada pedido e simula o repasse amadurecendo pedidos "pendentes" para "pagos" após ~14 dias (ajuste `PAYOUT_DELAY_DAYS` ou troque pela data real de liquidação da API do marketplace).
+- O scheduler já busca novos pedidos e amadurece repasses a cada ciclo; também dá para forçar uma venda simulada pelo botão **"Simular venda"** na tela do produto (ou `POST /api/connections/:id/orders/simulate`), útil para testar sem esperar o ciclo automático.
+- O resumo financeiro (bruto, taxas, pendente, repassado) aparece na tela do produto e no Dashboard.
+
 ## Otimização automática (SEO sempre em evolução)
 
 Um job (`server/src/services/schedulerService.ts`, via `node-cron`) roda periodicamente (configurável em **Configurações**) e, para cada anúncio conectado cujo "cooldown" já passou, gera uma nova variação de título/descrição/palavras-chave via IA e a publica no adapter do marketplace, registrando tudo no histórico do produto. Isso simula a manutenção contínua de SEO para não deixar o anúncio "estagnar" no ranking.
@@ -88,3 +116,7 @@ Também é possível disparar manualmente:
 | GET | `/api/marketplaces` | catálogo de marketplaces suportados |
 | GET/PUT | `/api/settings` | configurações de IA e agendamento |
 | POST | `/api/scheduler/run-now` | rodar o ciclo de otimização imediatamente |
+| GET | `/api/connections/:id/orders` | pedidos de uma conexão |
+| POST | `/api/connections/:id/orders/simulate` | simular uma venda agora |
+| GET | `/api/products/:id/financial-summary` | resumo financeiro do produto |
+| GET | `/api/financial-summary` | resumo financeiro global |

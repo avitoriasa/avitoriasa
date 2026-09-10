@@ -2,6 +2,7 @@ import { v4 as uuid } from "uuid";
 import { AIProvider } from "../ai/index.js";
 import { db } from "../db.js";
 import { getMarketSignal } from "./marketSignals.js";
+import { computePricing } from "./pricingService.js";
 import { Marketplace, Product, RecommendationEntry, RecommendationResult } from "../types.js";
 
 const WEIGHTS = {
@@ -51,6 +52,7 @@ export async function generateRecommendation(productId: string, aiProvider: AIPr
         categoryFit: breakdown.categoryFit,
         netMarginEstimate: breakdown.netMarginEstimate,
       },
+      pricing: computePricing(product.basePrice, marketplace.feePercent),
     };
     return entry;
   });

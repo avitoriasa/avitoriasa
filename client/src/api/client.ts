@@ -1,7 +1,9 @@
 import type {
   AppSettings,
+  FinancialSummary,
   Marketplace,
   OptimizationLogEntry,
+  Order,
   Product,
   ProductMarketplaceConnection,
   RecommendationResult,
@@ -60,4 +62,11 @@ export const api = {
     request<(OptimizationLogEntry & { productName: string; marketplaceName: string })[]>(
       "/optimizations/recent"
     ),
+
+  getConnectionOrders: (connectionId: string) => request<Order[]>(`/connections/${connectionId}/orders`),
+  simulateOrder: (connectionId: string) =>
+    request<Order[]>(`/connections/${connectionId}/orders/simulate`, { method: "POST" }),
+  getProductFinancialSummary: (productId: string) =>
+    request<FinancialSummary>(`/products/${productId}/financial-summary`),
+  getGlobalFinancialSummary: () => request<FinancialSummary>("/financial-summary"),
 };
